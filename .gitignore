@@ -1,5 +1,5 @@
-# Created by https://www.toptal.com/developers/gitignore/api/windows,linux,macos,android,androidstudio,intellij+all,visualstudio,visualstudiocode,eclipse
-# Edit at https://www.toptal.com/developers/gitignore?templates=windows,linux,macos,android,androidstudio,intellij+all,visualstudio,visualstudiocode,eclipse
+# Created by https://www.toptal.com/developers/gitignore/api/linux,macos,android,eclipse,windows,intellij+all,visualstudio,androidstudio,visualstudiocode,venv,dotenv,virtualenv
+# Edit at https://www.toptal.com/developers/gitignore?templates=linux,macos,android,eclipse,windows,intellij+all,visualstudio,androidstudio,visualstudiocode,venv,dotenv,virtualenv
 
 ### Android ###
 # Gradle files
@@ -41,6 +41,9 @@ gen-external-apklibs
 
 # Replacement of .externalNativeBuild directories introduced
 # with Android Studio 3.5.
+
+### dotenv ###
+.env
 
 ### Eclipse ###
 .metadata
@@ -242,6 +245,24 @@ Temporary Items
 ### macOS Patch ###
 # iCloud generated files
 *.icloud
+
+### venv ###
+# Virtualenv
+# http://iamzed.com/2009/05/07/a-primer-on-virtualenv/
+.Python
+[Bb]in
+[Ii]nclude
+[Ll]ib
+[Ll]ib64
+[Ll]ocal
+[Ss]cripts
+pyvenv.cfg
+.venv
+pip-selfcheck.json
+
+### VirtualEnv ###
+# Virtualenv
+# http://iamzed.com/2009/05/07/a-primer-on-virtualenv/
 
 ### VisualStudioCode ###
 .vscode/*
@@ -784,4 +805,6 @@ FodyWeavers.xsd
 ### VisualStudio Patch ###
 # Additional files built by Visual Studio
 
-# End of https://www.toptal.com/developers/gitignore/api/windows,linux,macos,android,androidstudio,intellij+all,visualstudio,visualstudiocode,eclipse
+# End of https://www.toptal.com/developers/gitignore/api/linux,macos,android,eclipse,windows,intellij+all,visualstudio,androidstudio,visualstudiocode,venv,dotenv,virtualenv
+
+apk/

@@ -9,7 +9,6 @@ android {
       minorApiLevel = 1
     }
   }
-
   defaultConfig {
     applicationId = "io.github.tetratheta.novelpiaviewer"
     minSdk = 31
@@ -17,13 +16,17 @@ android {
     versionCode = 1
     versionName = "1.4.1"
   }
-
   buildTypes {
     release {
-      isMinifyEnabled = false
+      isMinifyEnabled = true
+      isShrinkResources = true
       proguardFiles(
         getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
       )
+    }
+    create("prerelease") {
+      initWith(getByName("release"))
+      signingConfig = signingConfigs.getByName("debug")
     }
   }
   compileOptions {
@@ -33,9 +36,7 @@ android {
 }
 
 dependencies {
-  implementation(libs.androidx.activity)
   implementation(libs.androidx.appcompat)
-  implementation(libs.androidx.constraintlayout)
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.preference)
