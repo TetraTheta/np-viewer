@@ -9,8 +9,8 @@
     <item>disable</item>
   </string-array>
   <string-array name="volume_direction_entries">
-    <item>위: 이전 페이지 / 아래: 다음 페이지</item>
-    <item>위: 다음 페이지 / 아래: 이전 페이지</item>
+    <item>위: 이전 페이지 /\n아래: 다음 페이지</item>
+    <item>위: 다음 페이지 /\n아래: 이전 페이지</item>
   </string-array>
   <string-array name="volume_direction_values">
     <item>up_prev</item>

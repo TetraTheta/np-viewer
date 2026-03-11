@@ -22,5 +22,5 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "NovelpiaViewer"
+rootProject.name = "NPViewer"
 include(":app")

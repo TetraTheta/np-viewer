@@ -3,18 +3,18 @@ plugins {
 }
 
 android {
-  namespace = "io.github.tetratheta.novelpiaviewer"
+  namespace = "io.github.tetratheta.npviewer"
   compileSdk {
     version = release(36) {
       minorApiLevel = 1
     }
   }
   defaultConfig {
-    applicationId = "io.github.tetratheta.novelpiaviewer"
+    applicationId = "io.github.tetratheta.npviewer"
     minSdk = 31
     targetSdk = 36
     versionCode = 1
-    versionName = "1.4.2"
+    versionName = "1.5.0"
   }
   buildTypes {
     release {

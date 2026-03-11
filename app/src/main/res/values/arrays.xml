@@ -9,8 +9,8 @@
     <item>disable</item>
   </string-array>
   <string-array name="volume_direction_entries">
-    <item>Up: Previous page / Down: Next page</item>
-    <item>Up: Next page / Down: Previous page</item>
+    <item>Up: Previous page /\nDown: Next page</item>
+    <item>Up: Next page /\nDown: Previous page</item>
   </string-array>
   <string-array name="volume_direction_values">
     <item>up_prev</item>

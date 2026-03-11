@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-  <string name="app_name">노벨피아 뷰어</string>
+  <string name="app_name">NP 뷰어</string>
   <string name="btn_cancel">취소</string>
   <string name="btn_delete">삭제</string>
   <string name="menu_settings">설정</string>

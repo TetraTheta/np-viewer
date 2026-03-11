@@ -1,4 +1,4 @@
-package io.github.tetratheta.novelpiaviewer
+package io.github.tetratheta.npviewer
 
 import android.content.Context
 import android.util.AttributeSet

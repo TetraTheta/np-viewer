@@ -1,9 +1,4 @@
 <resources>
-  <!-- Base application theme. -->
-  <style name="Base.Theme.NovelpiaViewer" parent="Theme.Material3.DayNight.NoActionBar">
-    <!-- Customize your light theme here. -->
-    <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
-  </style>
-
-  <style name="Theme.NovelpiaViewer" parent="Base.Theme.NovelpiaViewer" />
+  <style name="Base.Theme.NPViewer" parent="Theme.Material3.DayNight.NoActionBar" />
+  <style name="Theme.NPViewer" parent="Base.Theme.NPViewer" />
 </resources>

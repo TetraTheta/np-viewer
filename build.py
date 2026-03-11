@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent
-APP_NAME = "NovelpiaViewer"
+APP_NAME = "NPViewer"
 
 # --- 환경 변수 로딩 ---
 

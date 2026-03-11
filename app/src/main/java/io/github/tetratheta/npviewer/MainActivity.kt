@@ -1,4 +1,4 @@
-package io.github.tetratheta.novelpiaviewer
+package io.github.tetratheta.npviewer
 
 import android.annotation.SuppressLint
 import android.content.Intent

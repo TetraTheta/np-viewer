@@ -1,5 +1,5 @@
 # WebView JavaScript Interface
--keepclassmembers class io.github.tetratheta.novelpiaviewer.MainActivity$ScrollRestoreInterface {
+-keepclassmembers class io.github.tetratheta.npviewer.MainActivity$ScrollRestoreInterface {
   @android.webkit.JavascriptInterface <methods>;
 }
 # Preferences

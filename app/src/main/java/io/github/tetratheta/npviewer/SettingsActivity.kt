@@ -1,4 +1,4 @@
-package io.github.tetratheta.novelpiaviewer
+package io.github.tetratheta.npviewer
 
 import android.content.Intent
 import android.content.pm.verify.domain.DomainVerificationManager

@@ -1,5 +1,5 @@
 <resources>
-  <string name="app_name">NovelpiaViewer</string>
+  <string name="app_name">NP Viewer</string>
   <string name="btn_cancel">Cancel</string>
   <string name="btn_delete">Delete</string>
   <string name="menu_settings">Settings</string>

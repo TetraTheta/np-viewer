@@ -7,7 +7,7 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-  <io.github.tetratheta.novelpiaviewer.TopSwipeRefreshLayout
+  <io.github.tetratheta.npviewer.TopSwipeRefreshLayout
       android:id="@+id/swipe_refresh"
       android:layout_width="match_parent"
       android:layout_height="match_parent">
@@ -16,7 +16,7 @@
         android:id="@+id/webview"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
-  </io.github.tetratheta.novelpiaviewer.TopSwipeRefreshLayout>
+  </io.github.tetratheta.npviewer.TopSwipeRefreshLayout>
 
   <com.google.android.material.progressindicator.LinearProgressIndicator
       android:id="@+id/progress_bar"
