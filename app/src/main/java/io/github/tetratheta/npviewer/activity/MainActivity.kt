@@ -1,4 +1,4 @@
-package io.github.tetratheta.npviewer
+package io.github.tetratheta.npviewer.activity
 
 import android.annotation.SuppressLint
 import android.content.Intent
@@ -24,6 +24,8 @@ import androidx.preference.PreferenceManager
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.google.android.material.progressindicator.LinearProgressIndicator
+import io.github.tetratheta.npviewer.R
+import io.github.tetratheta.npviewer.layout.TopSwipeRefreshLayout
 
 class MainActivity : AppCompatActivity() {
   private lateinit var errorView: LinearLayout
@@ -211,7 +213,7 @@ class MainActivity : AppCompatActivity() {
     super.onResume()
     val prefs = PreferenceManager.getDefaultSharedPreferences(this)
     swipeRefresh.triggerFraction =
-      prefs.getString("swipe_fraction", null)?.toFloatOrNull() ?: TopSwipeRefreshLayout.DEFAULT_TRIGGER_FRACTION
+      prefs.getString("swipe_fraction", null)?.toFloatOrNull() ?: TopSwipeRefreshLayout.Companion.DEFAULT_TRIGGER_FRACTION
   }
 
   override fun onSaveInstanceState(outState: Bundle) {

@@ -1,10 +1,11 @@
-package io.github.tetratheta.npviewer
+package io.github.tetratheta.npviewer.layout
 
 import android.content.Context
 import android.util.AttributeSet
 import android.view.MotionEvent
 import androidx.core.content.withStyledAttributes
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import io.github.tetratheta.npviewer.R
 
 class TopSwipeRefreshLayout @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null) :
   SwipeRefreshLayout(context, attrs) {

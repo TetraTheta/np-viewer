@@ -11,15 +11,16 @@ import java.net.URL
 
 // object: Singleton class
 object UpdateChecker {
-  private const val API_URL = "https://api.github.com/repos/TetraTheta/np-viewer/releases/latest"
-  private const val PREFS_NAME = "update_prefs"
-  private const val KEY_TIMESTAMP = "cache_timestamp"
-  private const val KEY_VERSION = "cache_version"
-  private const val KEY_DOWNLOAD_URL = "cache_download_url"
-  const val KEY_DOWNLOAD_ID = "download_id"
   const val KEY_APK_PATH = "apk_path"
   const val KEY_APK_VERSION = "apk_version"
+  const val KEY_DOWNLOAD_ID = "download_id"
+  const val KEY_PENDING_URL = "pending_download_url"
+  private const val API_URL = "https://api.github.com/repos/TetraTheta/np-viewer/releases/latest"
   private const val CACHE_TTL_MS = 3_600_000L // 1 hour
+  private const val KEY_DOWNLOAD_URL = "cache_download_url"
+  private const val KEY_TIMESTAMP = "cache_timestamp"
+  private const val KEY_VERSION = "cache_version"
+  private const val PREFS_NAME = "update_prefs"
 
   fun prefs(context: Context): SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
@@ -41,9 +42,9 @@ object UpdateChecker {
     prefs(context).edit {
       putLong(KEY_TIMESTAMP, System.currentTimeMillis())
       when (result) {
-        is UpdateResult.Available -> putString(KEY_VERSION, result.info.version).putString(
-          KEY_DOWNLOAD_URL, result.info.downloadUrl
-        )
+        is UpdateResult.Available -> putString(KEY_VERSION, result.info.version)
+          .putString(KEY_DOWNLOAD_URL, result.info.downloadUrl)
+          .putString(KEY_PENDING_URL, result.info.downloadUrl)
 
         is UpdateResult.UpToDate -> putString(KEY_VERSION, "").putString(KEY_DOWNLOAD_URL, "")
         is UpdateResult.Error -> return // don't cache errors

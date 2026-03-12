@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
   <string name="app_name">NP 뷰어</string>
+  <string name="btn_allow">허가</string>
   <string name="btn_cancel">취소</string>
   <string name="btn_delete">삭제</string>
   <string name="menu_settings">설정</string>
@@ -8,8 +9,10 @@
   <string name="msg_clear_cookie">쿠키가 삭제되었습니다.</string>
   <string name="msg_clear_cookie_warning">모든 쿠키가 삭제되며 노벨피아에서 로그아웃됩니다. 계속하시겠습니까?</string>
   <string name="msg_clear_webstorage">웹 스토리지가 삭제되었습니다.</string>
+  <string name="msg_notification_permission_denied">Notification permission declined. Use \"Install Update\" to install updates manually.</string>
   <string name="msg_page_load_error">페이지를 불러올 수 없습니다.</string>
   <string name="noti_channel_update">업데이트</string>
+  <string name="noti_channel_update_desc">업데이트 다운로드 진행 상황을 위한 채널입니다</string>
   <string name="noti_download_desc">%1$s 버전 다운로드 중</string>
   <string name="noti_download_title">NP 뷰어 업데이트 다운로드 중</string>
   <string name="noti_update_ready_text">탭하여 새 버전 설치</string>
@@ -35,6 +38,7 @@
   <string name="pref_key_clear_cache">캐시 삭제</string>
   <string name="pref_key_clear_cookie">쿠키 삭제</string>
   <string name="pref_key_clear_webstorage">웹 스토리지 삭제</string>
+  <string name="pref_key_current_version">현재 버전</string>
   <string name="pref_key_download_update">업데이트 다운로드</string>
   <string name="pref_key_install_update">업데이트 설치</string>
   <string name="pref_key_open_link_settings">링크 처리 활성화</string>
@@ -45,4 +49,6 @@
   <string name="retry_button_text">다시 시도</string>
   <string name="title_activity_settings">설정</string>
   <string name="title_clear_cookie">쿠키 삭제</string>
+  <string name="btn_go_to_settings">돌아가기</string>
+  <string name="btn_skip">넘어가기</string>
 </resources>

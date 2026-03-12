@@ -1,6 +1,8 @@
-package io.github.tetratheta.npviewer
+package io.github.tetratheta.npviewer.activity
 
 import android.app.DownloadManager
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
@@ -23,6 +25,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
+import io.github.tetratheta.npviewer.R
 import io.github.tetratheta.npviewer.update.UpdateChecker
 import io.github.tetratheta.npviewer.update.UpdateInfo
 import io.github.tetratheta.npviewer.update.UpdateResult
@@ -136,76 +139,119 @@ class SettingsActivity : AppCompatActivity() {
 
     // region Update
 
-    private suspend fun updateUpdatePrefs() {
+    private fun createDownloadChannel() {
+      val name = getString(R.string.noti_channel_update)
+      val descriptionText = getString(R.string.noti_channel_update_desc)
+      val importance = NotificationManager.IMPORTANCE_LOW
+      val channel = NotificationChannel("download_channel", name, importance).apply {
+        description = descriptionText
+      }
+      val nm = requireContext().getSystemService(NotificationManager::class.java)
+      nm.createNotificationChannel(channel)
+    }
+
+    private fun updateUpdatePrefs() {
       if (!isAdded) return
       val checkPref = findPreference<Preference>("check_update") ?: return
       val downloadPref = findPreference<Preference>("download_update") ?: return
+      val context = requireContext()
+      val prefs = UpdateChecker.prefs(context)
 
-      val prefs = UpdateChecker.prefs(requireContext())
-
-      // Purge APK cache if the currently installed version is already >= the stored APK version
+      // cleanup old APKs if already installed or outdated
       purgeInstalledApkCache(prefs)
 
-      var apkReady = checkApkReady(prefs)
+      // check current DownloadManager status (handles 'App killed' scenario)
+      val downloadId = prefs.getLong(UpdateChecker.KEY_DOWNLOAD_ID, -1L)
+      if (downloadId != -1L) {
+        val dm = context.getSystemService(DownloadManager::class.java)
+        val cursor = dm.query(DownloadManager.Query().setFilterById(downloadId))
+        if (cursor != null && cursor.moveToFirst()) {
+          val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+          cursor.close()
 
-      if (apkReady) {
-        downloadPref.title = getString(R.string.pref_key_install_update)
-        downloadPref.summary =
-          getString(R.string.pref_desc_apk_downloaded, prefs.getString(UpdateChecker.KEY_APK_VERSION, ""))
-        downloadPref.isEnabled = true
-      } else {
-        downloadPref.title = getString(R.string.pref_key_download_update)
-        downloadPref.summary = null
-      }
+          if (status == DownloadManager.STATUS_RUNNING || status == DownloadManager.STATUS_PENDING) {
+            // app was killed, but download is still going. lock the UI.
+            checkPref.isEnabled = false
+            checkPref.summary = getString(R.string.pref_desc_update_downloading)
+            downloadPref.isEnabled = false
+            return
+          } else if (status == DownloadManager.STATUS_FAILED) {
+            // download failed while app was dead. clear the ID so user can retry
+            prefs.edit { remove(UpdateChecker.KEY_DOWNLOAD_ID) }
+          }
+        } else {
+          // ID exists in prefs but not in system (cleared by user or system). clean up.
+          prefs.edit { remove(UpdateChecker.KEY_DOWNLOAD_ID) }
+        }
 
-      val isDownloading = prefs.getLong(UpdateChecker.KEY_DOWNLOAD_ID, -1L) != -1L
-      if (isDownloading) {
-        checkPref.isEnabled = false
-        checkPref.summary = getString(R.string.pref_desc_update_downloading)
-        if (!apkReady) downloadPref.isEnabled = false
-        return
-      }
+        // check if APK is downloaded and ready to install
+        val apkReady = checkApkReady(prefs)
+        if (apkReady) {
+          val readyVersion = prefs.getString(UpdateChecker.KEY_APK_VERSION, "")
 
-      if (UpdateChecker.hasFreshCache(requireContext())) {
-        val cached = UpdateChecker.getCachedInfo(requireContext())
-        pendingUpdateInfo = cached
-        apkReady = maybeCleanStaleApk(prefs, cached?.version)
-        applyUpdateResult(cached, apkReady = apkReady)
-        return
-      }
+          checkPref.isEnabled = true
+          checkPref.summary = getString(R.string.pref_desc_check_update_available, readyVersion)
 
-      // No fresh cache and no auto-fetch: show default idle state
-      checkPref.isEnabled = true
-      checkPref.summary = getString(R.string.pref_desc_check_update_default)
-      if (!apkReady) {
-        downloadPref.title = getString(R.string.pref_key_download_update)
-        downloadPref.summary = null
-        downloadPref.isEnabled = false
+          downloadPref.title = getString(R.string.pref_key_install_update)
+          downloadPref.summary = getString(R.string.pref_desc_apk_downloaded, readyVersion)
+          downloadPref.isEnabled = true
+          return
+        }
+
+        // check GitHub cache (handles 'Update found but not yet downloaded')
+        if (UpdateChecker.hasFreshCache(context)) {
+          val cached = UpdateChecker.getCachedInfo(context)
+          pendingUpdateInfo = cached
+          applyUpdateResult(cached, apkReady = false)
+        } else {
+          checkPref.isEnabled = true
+          checkPref.summary = getString(R.string.pref_desc_check_update_default)
+
+          downloadPref.isEnabled = false
+          downloadPref.title = getString(R.string.pref_key_download_update)
+          downloadPref.summary = null
+        }
       }
     }
 
     private suspend fun forceCheckUpdate() {
       if (!isAdded) return
-      val prefs = UpdateChecker.prefs(requireContext())
-      val apkReady = checkApkReady(prefs)
-      setCheckingState(keepDownloadPref = apkReady)
+      val context = requireContext()
+      val prefs = UpdateChecker.prefs(context)
 
-      val result = UpdateChecker.fetchLatest(requireContext())
-      UpdateChecker.saveCache(requireContext(), result)
+      // purge any existing downloaded APKs when manually checking
+      val oldApkPath = prefs.getString(UpdateChecker.KEY_APK_PATH, null)
+      if (oldApkPath != null) File(oldApkPath).delete()
+      prefs.edit {
+        remove(UpdateChecker.KEY_APK_PATH)
+        remove(UpdateChecker.KEY_APK_VERSION)
+
+        // cancel any ongoing download in the system
+        val currentId = prefs.getLong(UpdateChecker.KEY_DOWNLOAD_ID, -1L)
+        if (currentId != -1L) {
+          val dm = context.getSystemService(DownloadManager::class.java)
+          dm.remove(currentId)
+          remove(UpdateChecker.KEY_DOWNLOAD_ID)
+        }
+      }
+
+      setCheckingState()
+
+      val result = UpdateChecker.fetchLatest(context)
+      UpdateChecker.saveCache(context, result)
       if (!isAdded) return
 
       val newInfo = if (result is UpdateResult.Available) result.info else null
       pendingUpdateInfo = newInfo
-      val updatedApkReady = maybeCleanStaleApk(prefs, newInfo?.version)
-      applyUpdateResult(newInfo, isError = result is UpdateResult.Error, apkReady = updatedApkReady)
+      applyUpdateResult(newInfo, isError = result is UpdateResult.Error, apkReady = false)
     }
 
-    private fun setCheckingState(keepDownloadPref: Boolean = false) {
+    private fun setCheckingState() {
       findPreference<Preference>("check_update")?.apply {
         isEnabled = false
         summary = getString(R.string.pref_desc_check_update_checking)
       }
-      if (!keepDownloadPref) findPreference<Preference>("download_update")?.isEnabled = false
+      findPreference<Preference>("download_update")?.isEnabled = false
     }
 
     private fun applyUpdateResult(info: UpdateInfo?, isError: Boolean = false, apkReady: Boolean = false) {
@@ -227,19 +273,36 @@ class SettingsActivity : AppCompatActivity() {
     private fun triggerDownload() {
       val info = pendingUpdateInfo ?: return
       val context = requireContext()
+
+      createDownloadChannel()
+
       val request = DownloadManager.Request(info.downloadUrl.toUri()).apply {
         setTitle(getString(R.string.noti_download_title))
         setDescription(getString(R.string.noti_download_desc, info.version))
+
+        // use VISIBILITY_VISIBLE so the SYSTEM shows progress but DOES NOT show its own 'Complete' notification (prevents duplicates)
         setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
+
+        // don't hide the noficiation, SYSTEM!
+        setAllowedOverMetered(true)
+        setAllowedOverRoaming(true)
+
         setDestinationInExternalFilesDir(context, null, "np-viewer-${info.version}.apk")
       }
       val dm = context.getSystemService(DownloadManager::class.java)
-      val downloadId = dm.enqueue(request)
-      UpdateChecker.prefs(context).edit { putLong(UpdateChecker.KEY_DOWNLOAD_ID, downloadId) }
+
+      try {
+        val downloadId = dm.enqueue(request)
+        UpdateChecker.prefs(context).edit { putLong(UpdateChecker.KEY_DOWNLOAD_ID, downloadId) }
+      } catch (e: Exception) {
+        Toast.makeText(context, "Download failed to start: ${e.message}", Toast.LENGTH_LONG).show()
+      }
+
       findPreference<Preference>("check_update")?.apply {
         isEnabled = false
         summary = getString(R.string.pref_desc_update_downloading)
       }
+
       findPreference<Preference>("download_update")?.isEnabled = false
     }
 
@@ -285,28 +348,6 @@ class SettingsActivity : AppCompatActivity() {
       }
     }
 
-    /** If remoteVersion is newer than the stored APK version, deletes the APK and clears prefs.
-     *  Returns true if the APK is still present and valid. */
-    private fun maybeCleanStaleApk(prefs: SharedPreferences, remoteVersion: String?): Boolean {
-      val apkPath = prefs.getString(UpdateChecker.KEY_APK_PATH, null) ?: return false
-      val apkVersion = prefs.getString(UpdateChecker.KEY_APK_VERSION, null) ?: return false
-      val apkFile = File(apkPath)
-      if (!apkFile.exists()) {
-        prefs.edit { remove(UpdateChecker.KEY_APK_PATH).remove(UpdateChecker.KEY_APK_VERSION) }
-        return false
-      }
-      if (remoteVersion != null && UpdateChecker.isNewer(remoteVersion, apkVersion)) {
-        apkFile.delete()
-        prefs.edit { remove(UpdateChecker.KEY_APK_PATH).remove(UpdateChecker.KEY_APK_VERSION) }
-        findPreference<Preference>("download_update")?.apply {
-          title = getString(R.string.pref_key_download_update)
-          summary = null
-        }
-        return false
-      }
-      return true
-    }
-
     // endregion
 
     // region Notification Permission (API 33+)
@@ -326,8 +367,8 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun showNotificationRationaleDialog() {
-      AlertDialog.Builder(requireContext()).setTitle(R.string.dialog_notification_permission_title)
-        .setMessage(R.string.dialog_notification_permission_message).setPositiveButton(R.string.btn_allow) { _, _ ->
+      AlertDialog.Builder(requireContext()).setTitle(R.string.diag_notification_permission_title)
+        .setMessage(R.string.diag_notification_permission_message).setPositiveButton(R.string.btn_allow) { _, _ ->
           notificationPermissionLauncher.launch(POST_NOTIFICATIONS)
         }.setNegativeButton(R.string.btn_skip) { _, _ ->
           pendingPermissionAction?.invoke()
@@ -336,8 +377,8 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun showGoToSettingsDialog() {
-      AlertDialog.Builder(requireContext()).setTitle(R.string.dialog_notification_settings_title)
-        .setMessage(R.string.dialog_notification_settings_message)
+      AlertDialog.Builder(requireContext()).setTitle(R.string.diag_notification_settings_title)
+        .setMessage(R.string.diag_notification_settings_message)
         .setPositiveButton(R.string.btn_go_to_settings) { _, _ ->
           val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
             data = Uri.fromParts("package", requireContext().packageName, null)
@@ -413,7 +454,7 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     companion object {
-      // Declared as a string constant to avoid @RequiresApi(33) on every call site
+      // declared as a string constant to avoid @RequiresApi(33) on every call site
       private const val POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS"
     }
   }

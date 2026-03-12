@@ -6,8 +6,8 @@
         <option name="TAB_SIZE" value="2" />
       </value>
     </option>
-    <option name="RIGHT_MARGIN" value="120" />
-    <option name="SOFT_MARGINS" value="80,120" />
+    <option name="RIGHT_MARGIN" value="150" />
+    <option name="SOFT_MARGINS" value="80,120,150" />
     <CssCodeStyleSettings>
       <option name="HEX_COLOR_UPPER_CASE" value="true" />
       <option name="HEX_COLOR_SHORT_FORMAT" value="true" />
