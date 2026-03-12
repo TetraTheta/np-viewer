@@ -11,7 +11,6 @@ APP_NAME = "NPViewer"
 
 # --- 환경 변수 로딩 ---
 
-
 def load_dotenv():
     env_file = PROJECT_ROOT / ".env"
     if not env_file.exists():
@@ -45,15 +44,15 @@ KEY_PASS = os.environ.get("KEY_PASSWORD") or KEYSTORE_PASS
 
 # --- 버전 파싱 ---
 
-gradle_kts = (PROJECT_ROOT / "app" / "build.gradle.kts").read_text(encoding="utf-8")
-version_match = re.search(r'versionName\s*=\s*"([^"]+)"', gradle_kts)
+gradle_props = (PROJECT_ROOT / "gradle.properties").read_text(encoding="utf-8")
+version_match = re.search(r"^app\.versionName\s*=\s*(.+)$", gradle_props, re.MULTILINE)
 if not version_match:
     print(
-        "[ERROR] app/build.gradle.kts에서 versionName을 찾을 수 없습니다.",
+        "[ERROR] gradle.properties에서 app.versionName을 찾을 수 없습니다.",
         file=sys.stderr,
     )
     sys.exit(1)
-VERSION = version_match.group(1)
+VERSION = version_match.group(1).strip()
 
 print(f"[INFO] {APP_NAME} v{VERSION} 빌드를 시작합니다.")
 
@@ -140,3 +139,20 @@ shutil.copy2(signed_apk, output_apk)
 signed_apk.unlink()  # 중간 산출물 정리
 
 print(f"\n[DONE] 서명된 APK: {output_apk}")
+
+print("계속하려면 아무 키나 누르십시오...")
+
+if os.name == 'nt':
+    import msvcrt
+    msvcrt.getch()
+else:
+    import tty
+    import termios
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setraw(sys.stdin.fileno())
+        sys.stdin.read(1)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+print()

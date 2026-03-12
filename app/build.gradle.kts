@@ -13,8 +13,8 @@ android {
     applicationId = "io.github.tetratheta.npviewer"
     minSdk = 31
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.6.2"
+    versionCode = (property("app.versionCode") as String).toInt()
+    versionName = property("app.versionName") as String
   }
   buildTypes {
     release {
