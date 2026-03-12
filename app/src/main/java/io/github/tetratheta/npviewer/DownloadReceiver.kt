@@ -45,8 +45,7 @@ class DownloadReceiver : BroadcastReceiver() {
 
     val apkVersion = apkFile.nameWithoutExtension.removePrefix("np-viewer-")
     prefs.edit {
-      putString(UpdateChecker.KEY_APK_PATH, apkFile.absolutePath)
-        .putString(UpdateChecker.KEY_APK_VERSION, apkVersion)
+      putString(UpdateChecker.KEY_APK_PATH, apkFile.absolutePath).putString(UpdateChecker.KEY_APK_VERSION, apkVersion)
     }
 
     val apkUri = FileProvider.getUriForFile(context, "${context.packageName}.provider", apkFile)

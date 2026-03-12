@@ -51,22 +51,19 @@ class SettingsActivity : AppCompatActivity() {
   }
 
   class SettingsFragment : PreferenceFragmentCompat() {
-    private val notificationPermissionLauncher = registerForActivityResult(
-      ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-      if (!isAdded) return@registerForActivityResult
-      if (!isGranted) {
-        if (!shouldShowRequestPermissionRationale(POST_NOTIFICATIONS)) {
-          // "Don't ask again" was selected — system won't ask again
-          showGoToSettingsDialog()
-        } else {
-          // Declined this time but can ask again later
-          Toast.makeText(requireContext(), R.string.msg_notification_permission_denied, Toast.LENGTH_LONG).show()
+    private val notificationPermissionLauncher =
+      registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (!isAdded) return@registerForActivityResult
+        if (!isGranted) {
+          if (!shouldShowRequestPermissionRationale(POST_NOTIFICATIONS)) { // "Don't ask again" was selected — system won't ask again
+            showGoToSettingsDialog()
+          } else { // Declined this time but can ask again later
+            Toast.makeText(requireContext(), R.string.msg_notification_permission_denied, Toast.LENGTH_LONG).show()
+          }
         }
+        pendingPermissionAction?.invoke()
+        pendingPermissionAction = null
       }
-      pendingPermissionAction?.invoke()
-      pendingPermissionAction = null
-    }
 
     private var pendingUpdateInfo: UpdateInfo? = null
     private var pendingPermissionAction: (() -> Unit)? = null
@@ -317,8 +314,9 @@ class SettingsActivity : AppCompatActivity() {
     /** Requests POST_NOTIFICATIONS permission if needed, then runs [action].
      *  On API < 33 or if already granted, runs [action] immediately. */
     private fun requestNotificationPermissionThen(action: () -> Unit) {
-      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-        ContextCompat.checkSelfPermission(requireContext(), POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || ContextCompat.checkSelfPermission(
+          requireContext(), POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
       ) {
         action()
         return
