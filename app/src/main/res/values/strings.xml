@@ -1,7 +1,15 @@
 <resources>
   <string name="app_name">NP Viewer</string>
+  <string name="btn_allow">Allow</string>
   <string name="btn_cancel">Cancel</string>
   <string name="btn_delete">Delete</string>
+  <string name="btn_go_to_settings">Open Settings</string>
+  <string name="btn_skip">Skip</string>
+  <string name="dialog_notification_permission_title">Allow Notifications</string>
+  <string name="dialog_notification_permission_message">NP Viewer requests notification permission to alert you when an update download is complete.\n\nWithout this permission, the \"Update ready\" notification will not appear on Android 13 and above. You can still install updates at any time by tapping \"Install Update\" in Settings.\n\nIf you tap Skip or Decline, you will not be asked again — to enable notifications later, go to the app\'s settings manually.</string>
+  <string name="dialog_notification_settings_title">Notification Permission Required</string>
+  <string name="dialog_notification_settings_message">Notification permission has been permanently denied. \"Update ready\" notifications will not appear.\n\nTo re-enable, open the app\'s settings and grant the Notifications permission manually.\n\nYou can still install updates by tapping \"Install Update\" in Settings.</string>
+  <string name="msg_notification_permission_denied">Notification permission declined. Use \"Install Update\" to install updates manually.</string>
   <string name="menu_settings">Settings</string>
   <string name="msg_clear_cache">Cleared Cache</string>
   <string name="msg_clear_cookie">Cleared Cookie</string>
@@ -31,6 +39,7 @@
   <string name="pref_desc_swipe_fraction">Area from the top of the screen that triggers pull-to-refresh</string>
   <string name="pref_desc_update_downloading">Downloading…</string>
   <string name="pref_key_check_update">Check for Updates</string>
+  <string name="pref_key_current_version">Current Version</string>
   <string name="pref_key_clear_cache">Clear Cache</string>
   <string name="pref_key_clear_cookie">Clear Cookie</string>
   <string name="pref_key_clear_webstorage">Clear WebStorage</string>

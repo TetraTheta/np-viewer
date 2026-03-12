@@ -30,16 +30,6 @@
         app:defaultValue="0.15"
         app:useSimpleSummaryProvider="true" />
   </PreferenceCategory>
-  <PreferenceCategory app:title="@string/pref_category_update">
-    <Preference
-        app:key="check_update"
-        app:title="@string/pref_key_check_update"
-        app:summary="@string/pref_desc_check_update_default" />
-    <Preference
-        app:key="download_update"
-        app:title="@string/pref_key_download_update"
-        app:enabled="false" />
-  </PreferenceCategory>
   <PreferenceCategory app:title="@string/pref_category_data">
     <Preference
         app:key="clear_cache"
@@ -53,5 +43,19 @@
         app:key="clear_cookie"
         app:title="@string/pref_key_clear_cookie"
         app:summary="@string/pref_desc_clear_cookie" />
+  </PreferenceCategory>
+  <PreferenceCategory app:title="@string/pref_category_update">
+    <Preference
+        app:key="current_version"
+        app:title="@string/pref_key_current_version"
+        app:selectable="false" />
+    <Preference
+        app:key="check_update"
+        app:title="@string/pref_key_check_update"
+        app:summary="@string/pref_desc_check_update_default" />
+    <Preference
+        app:key="download_update"
+        app:title="@string/pref_key_download_update"
+        app:enabled="false" />
   </PreferenceCategory>
 </androidx.preference.PreferenceScreen>

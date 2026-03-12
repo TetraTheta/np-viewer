@@ -1,4 +1,4 @@
-package io.github.tetratheta.npviewer
+package io.github.tetratheta.npviewer.update
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -9,14 +9,7 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-data class UpdateInfo(val version: String, val downloadUrl: String)
-
-sealed class UpdateResult {
-  data class Available(val info: UpdateInfo) : UpdateResult()
-  object UpToDate : UpdateResult()
-  object Error : UpdateResult()
-}
-
+// object: Singleton class
 object UpdateChecker {
   private const val API_URL = "https://api.github.com/repos/TetraTheta/np-viewer/releases/latest"
   private const val PREFS_NAME = "update_prefs"

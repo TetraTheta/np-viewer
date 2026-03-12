@@ -11,6 +11,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.FileProvider
 import androidx.core.content.edit
 import androidx.core.net.toUri
+import io.github.tetratheta.npviewer.update.UpdateChecker
 import java.io.File
 
 class DownloadReceiver : BroadcastReceiver() {
@@ -33,6 +34,9 @@ class DownloadReceiver : BroadcastReceiver() {
     val localUri = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_LOCAL_URI))
     cursor.close()
 
+    // Always clear the download ID now that the download has completed (success or failure)
+    prefs.edit { remove(UpdateChecker.KEY_DOWNLOAD_ID) }
+
     if (status != DownloadManager.STATUS_SUCCESSFUL || localUri == null) return
 
     val apkPath = localUri.toUri().path ?: return
@@ -41,7 +45,7 @@ class DownloadReceiver : BroadcastReceiver() {
 
     val apkVersion = apkFile.nameWithoutExtension.removePrefix("np-viewer-")
     prefs.edit {
-      remove(UpdateChecker.KEY_DOWNLOAD_ID).putString(UpdateChecker.KEY_APK_PATH, apkFile.absolutePath)
+      putString(UpdateChecker.KEY_APK_PATH, apkFile.absolutePath)
         .putString(UpdateChecker.KEY_APK_VERSION, apkVersion)
     }
 
