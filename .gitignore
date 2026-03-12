@@ -808,3 +808,4 @@ FodyWeavers.xsd
 # End of https://www.toptal.com/developers/gitignore/api/linux,macos,android,eclipse,windows,intellij+all,visualstudio,androidstudio,visualstudiocode,venv,dotenv,virtualenv
 
 apk/
+.claude/

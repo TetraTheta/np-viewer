@@ -1,8 +1,11 @@
 package io.github.tetratheta.npviewer
 
+import android.app.DownloadManager
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.verify.domain.DomainVerificationManager
 import android.content.pm.verify.domain.DomainVerificationUserState
+import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.webkit.CookieManager
@@ -10,6 +13,8 @@ import android.webkit.WebStorage
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
+import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.Preference
@@ -39,6 +44,8 @@ class SettingsActivity : AppCompatActivity() {
   }
 
   class SettingsFragment : PreferenceFragmentCompat() {
+    private var pendingUpdateInfo: UpdateInfo? = null
+
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
       setPreferencesFromResource(R.xml.root_preferences, rootKey)
 
@@ -46,6 +53,22 @@ class SettingsActivity : AppCompatActivity() {
         val intent =
           Intent(Settings.ACTION_APP_OPEN_BY_DEFAULT_SETTINGS, "package:${requireContext().packageName}".toUri())
         startActivity(intent)
+        true
+      }
+
+      findPreference<Preference>("check_update")?.setOnPreferenceClickListener {
+        lifecycleScope.launch { forceCheckUpdate() }
+        true
+      }
+
+      findPreference<Preference>("download_update")?.setOnPreferenceClickListener {
+        val prefs = UpdateChecker.prefs(requireContext())
+        val apkPath = prefs.getString(UpdateChecker.KEY_APK_PATH, null)
+        if (apkPath != null && File(apkPath).exists()) {
+          triggerInstall(apkPath)
+        } else {
+          triggerDownload()
+        }
         true
       }
 
@@ -70,10 +93,7 @@ class SettingsActivity : AppCompatActivity() {
           .setMessage(R.string.msg_clear_cookie_warning).setPositiveButton(R.string.btn_delete) { _, _ ->
             CookieManager.getInstance().removeAllCookies(null)
             CookieManager.getInstance().flush()
-            Toast.makeText(context, R.string.msg_clear_cookie, Toast.LENGTH_SHORT).show() //updateStorageSummaries()
-            // This is lame
-            // SQLite, where the cookies are saved, does not shrink after the cookie removal
-            // But this is just saying: "cookies are deleted so it is now 0 B!"
+            Toast.makeText(context, R.string.msg_clear_cookie, Toast.LENGTH_SHORT).show()
             findPreference<Preference>("clear_cookie")?.summary = "${getString(R.string.pref_desc_clear_cookie)}\n0 B"
           }.setNegativeButton(R.string.btn_cancel, null).show()
         true
@@ -83,8 +103,166 @@ class SettingsActivity : AppCompatActivity() {
     override fun onResume() {
       super.onResume()
       updateLinkSettingsPref()
-      lifecycleScope.launch { updateStorageSummaries() }
+      lifecycleScope.launch {
+        updateStorageSummaries()
+        updateUpdatePrefs()
+      }
     }
+
+    // region Update
+
+    private suspend fun updateUpdatePrefs() {
+      if (!isAdded) return
+      val checkPref = findPreference<Preference>("check_update") ?: return
+      val downloadPref = findPreference<Preference>("download_update") ?: return
+
+      val prefs = UpdateChecker.prefs(requireContext())
+      var apkReady = checkApkReady(prefs)
+
+      if (apkReady) {
+        downloadPref.title = getString(R.string.pref_key_install_update)
+        downloadPref.summary =
+          getString(R.string.pref_desc_apk_downloaded, prefs.getString(UpdateChecker.KEY_APK_VERSION, ""))
+        downloadPref.isEnabled = true
+      } else {
+        downloadPref.title = getString(R.string.pref_key_download_update)
+        downloadPref.summary = null
+      }
+
+      val isDownloading = prefs.getLong(UpdateChecker.KEY_DOWNLOAD_ID, -1L) != -1L
+      if (isDownloading) {
+        checkPref.isEnabled = false
+        checkPref.summary = getString(R.string.pref_desc_update_downloading)
+        if (!apkReady) downloadPref.isEnabled = false
+        return
+      }
+
+      if (UpdateChecker.hasFreshCache(requireContext())) {
+        val cached = UpdateChecker.getCachedInfo(requireContext())
+        pendingUpdateInfo = cached
+        apkReady = maybeCleanStaleApk(prefs, cached?.version)
+        applyUpdateResult(cached, apkReady = apkReady)
+        return
+      }
+
+      setCheckingState(keepDownloadPref = apkReady)
+      val result = UpdateChecker.fetchLatest(requireContext())
+      UpdateChecker.saveCache(requireContext(), result)
+      if (!isAdded) return
+
+      val newInfo = if (result is UpdateResult.Available) result.info else null
+      pendingUpdateInfo = newInfo
+      apkReady = maybeCleanStaleApk(prefs, newInfo?.version)
+      applyUpdateResult(newInfo, isError = result is UpdateResult.Error, apkReady = apkReady)
+    }
+
+    private suspend fun forceCheckUpdate() {
+      if (!isAdded) return
+      val prefs = UpdateChecker.prefs(requireContext())
+      val apkReady = checkApkReady(prefs)
+      setCheckingState(keepDownloadPref = apkReady)
+
+      val result = UpdateChecker.fetchLatest(requireContext())
+      UpdateChecker.saveCache(requireContext(), result)
+      if (!isAdded) return
+
+      val newInfo = if (result is UpdateResult.Available) result.info else null
+      pendingUpdateInfo = newInfo
+      val updatedApkReady = maybeCleanStaleApk(prefs, newInfo?.version)
+      applyUpdateResult(newInfo, isError = result is UpdateResult.Error, apkReady = updatedApkReady)
+    }
+
+    private fun setCheckingState(keepDownloadPref: Boolean = false) {
+      findPreference<Preference>("check_update")?.apply {
+        isEnabled = false
+        summary = getString(R.string.pref_desc_check_update_checking)
+      }
+      if (!keepDownloadPref) findPreference<Preference>("download_update")?.isEnabled = false
+    }
+
+    private fun applyUpdateResult(info: UpdateInfo?, isError: Boolean = false, apkReady: Boolean = false) {
+      val checkPref = findPreference<Preference>("check_update") ?: return
+      val downloadPref = findPreference<Preference>("download_update") ?: return
+      checkPref.isEnabled = true
+      checkPref.summary = when {
+        info != null -> getString(R.string.pref_desc_check_update_available, info.version)
+        isError -> getString(R.string.pref_desc_check_update_error)
+        else -> getString(R.string.pref_desc_check_update_latest)
+      }
+      if (!apkReady) {
+        downloadPref.title = getString(R.string.pref_key_download_update)
+        downloadPref.summary = null
+        downloadPref.isEnabled = info != null
+      } // If apkReady, download_update already shows "Install Update" — don't override it
+    }
+
+    private fun triggerDownload() {
+      val info = pendingUpdateInfo ?: return
+      val context = requireContext()
+      val request = DownloadManager.Request(Uri.parse(info.downloadUrl)).apply {
+        setTitle(getString(R.string.noti_download_title))
+        setDescription(getString(R.string.noti_download_desc, info.version))
+        setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+        setDestinationInExternalFilesDir(context, null, "np-viewer-${info.version}.apk")
+      }
+      val dm = context.getSystemService(DownloadManager::class.java)
+      val downloadId = dm.enqueue(request)
+      UpdateChecker.prefs(context).edit { putLong(UpdateChecker.KEY_DOWNLOAD_ID, downloadId) }
+      findPreference<Preference>("check_update")?.apply {
+        isEnabled = false
+        summary = getString(R.string.pref_desc_update_downloading)
+      }
+      findPreference<Preference>("download_update")?.isEnabled = false
+    }
+
+    private fun triggerInstall(apkPath: String) {
+      val context = requireContext()
+      val apkFile = File(apkPath)
+      val apkUri = FileProvider.getUriForFile(context, "${context.packageName}.provider", apkFile)
+      val installIntent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(apkUri, "application/vnd.android.package-archive")
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+      }
+      UpdateChecker.prefs(context).edit {
+        remove(UpdateChecker.KEY_APK_PATH).remove(UpdateChecker.KEY_APK_VERSION)
+      }
+      findPreference<Preference>("download_update")?.apply {
+        title = getString(R.string.pref_key_download_update)
+        summary = null
+        isEnabled = false
+      }
+      startActivity(installIntent)
+    }
+
+    private fun checkApkReady(prefs: SharedPreferences): Boolean {
+      val apkPath = prefs.getString(UpdateChecker.KEY_APK_PATH, null) ?: return false
+      val apkVersion = prefs.getString(UpdateChecker.KEY_APK_VERSION, null) ?: return false
+      return apkVersion.isNotEmpty() && File(apkPath).exists()
+    }
+
+    /** If remoteVersion is newer than the stored APK version, deletes the APK and clears prefs.
+     *  Returns true if the APK is still present and valid. */
+    private fun maybeCleanStaleApk(prefs: SharedPreferences, remoteVersion: String?): Boolean {
+      val apkPath = prefs.getString(UpdateChecker.KEY_APK_PATH, null) ?: return false
+      val apkVersion = prefs.getString(UpdateChecker.KEY_APK_VERSION, null) ?: return false
+      val apkFile = File(apkPath)
+      if (!apkFile.exists()) {
+        prefs.edit { remove(UpdateChecker.KEY_APK_PATH).remove(UpdateChecker.KEY_APK_VERSION) }
+        return false
+      }
+      if (remoteVersion != null && UpdateChecker.isNewer(remoteVersion, apkVersion)) {
+        apkFile.delete()
+        prefs.edit { remove(UpdateChecker.KEY_APK_PATH).remove(UpdateChecker.KEY_APK_VERSION) }
+        findPreference<Preference>("download_update")?.apply {
+          title = getString(R.string.pref_key_download_update)
+          summary = null
+        }
+        return false
+      }
+      return true
+    }
+
+    // endregion
 
     private fun updateLinkSettingsPref() {
       val pref = findPreference<Preference>("open_link_settings") ?: return
