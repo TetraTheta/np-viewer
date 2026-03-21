@@ -7,8 +7,7 @@ import androidx.core.content.withStyledAttributes
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import io.github.tetratheta.npviewer.R
 
-class TopSwipeRefreshLayout @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null) :
-  SwipeRefreshLayout(context, attrs) {
+class TopSwipeRefreshLayout @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null) : SwipeRefreshLayout(context, attrs) {
   companion object {
     const val DEFAULT_TRIGGER_FRACTION = 0.15f
   }

@@ -49,6 +49,11 @@
         app:key="current_version"
         app:title="@string/pref_key_current_version"
         app:selectable="false" />
+    <SwitchPreferenceCompat
+        app:key="auto_check_update"
+        app:title="@string/pref_key_auto_check_update"
+        app:summary="@string/pref_desc_auto_check_update"
+        app:defaultValue="true" />
     <Preference
         app:key="check_update"
         app:title="@string/pref_key_check_update"

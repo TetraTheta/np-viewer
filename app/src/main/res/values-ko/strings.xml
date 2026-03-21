@@ -4,6 +4,12 @@
   <string name="btn_allow">허가</string>
   <string name="btn_cancel">취소</string>
   <string name="btn_delete">삭제</string>
+  <string name="btn_go_to_settings">돌아가기</string>
+  <string name="btn_skip">넘어가기</string>
+  <string name="dlg_notification_permission_message">NP 뷰어는 업데이트 다운로드가 완료되면 알림 권한을 요청합니다. 이 권한이 없으면 Android 13 이상에서는 \"업데이트 준비 완료\" 알림이 나타나지 않습니다. 설정에서 \"업데이트 설치\"를 탭하여 언제든지 업데이트를 설치할 수 있습니다. 건너뛰기 또는 거절을 탭하면 나중에 알림을 활성화하려면 앱의 설정으로 수동으로 이동하라는 메시지가 다시 표시되지 않습니다.</string>
+  <string name="dlg_notification_permission_title">알림 허용</string>
+  <string name="dlg_notification_settings_message">알림 권한이 영구적으로 거부되었습니다. \"업데이트 준비 완료\" 알림이 나타나지 않습니다. 다시 활성화하려면 앱의 설정을 열고 알림 권한을 수동으로 부여하세요. 설정에서 \"업데이트 설치\"를 탭하여 업데이트를 설치할 수 있습니다.</string>
+  <string name="dlg_notification_settings_title">알림 권한 필요</string>
   <string name="menu_settings">설정</string>
   <string name="msg_clear_cache">캐시가 삭제되었습니다.</string>
   <string name="msg_clear_cookie">쿠키가 삭제되었습니다.</string>
@@ -14,7 +20,11 @@
   <string name="noti_channel_update">업데이트</string>
   <string name="noti_channel_update_desc">업데이트 다운로드 진행 상황을 위한 채널입니다</string>
   <string name="noti_download_desc">%1$s 버전 다운로드 중</string>
+  <string name="noti_download_failed_text">탭하여 다시 시도</string>
+  <string name="noti_download_failed_title">다운로드 실패</string>
   <string name="noti_download_title">NP 뷰어 업데이트 다운로드 중</string>
+  <string name="noti_update_available_text">v%1$s 버전이 준비되었습니다. 탭하여 다운로드하세요.</string>
+  <string name="noti_update_available_title">업데이트 사용 가능</string>
   <string name="noti_update_ready_text">탭하여 새 버전 설치</string>
   <string name="noti_update_ready_title">업데이트 준비됨</string>
   <string name="pref_category_data">데이터</string>
@@ -22,6 +32,7 @@
   <string name="pref_category_update">업데이트</string>
   <string name="pref_category_viewer">뷰어</string>
   <string name="pref_desc_apk_downloaded">v%1$s 다운로드됨 ― 탭하여 설치</string>
+  <string name="pref_desc_auto_check_update">앱이 실행될 때 업데이트 확인</string>
   <string name="pref_desc_check_update_available">새 버전 (v%1$s) 이용 가능</string>
   <string name="pref_desc_check_update_checking">업데이트 확인 중…</string>
   <string name="pref_desc_check_update_default">탭하여 새 업데이트 확인</string>
@@ -34,6 +45,7 @@
   <string name="pref_desc_open_link_settings_enabled">노벨피아 링크가 이미 이 앱에서 열리도록 설정되어 있습니다</string>
   <string name="pref_desc_swipe_fraction">당겨서 새로고침이 동작하는 화면 상단 영역</string>
   <string name="pref_desc_update_downloading">다운로드 중…</string>
+  <string name="pref_key_auto_check_update">자동 업데이트 확인</string>
   <string name="pref_key_check_update">업데이트 확인</string>
   <string name="pref_key_clear_cache">캐시 삭제</string>
   <string name="pref_key_clear_cookie">쿠키 삭제</string>
@@ -49,6 +61,4 @@
   <string name="retry_button_text">다시 시도</string>
   <string name="title_activity_settings">설정</string>
   <string name="title_clear_cookie">쿠키 삭제</string>
-  <string name="btn_go_to_settings">돌아가기</string>
-  <string name="btn_skip">넘어가기</string>
 </resources>

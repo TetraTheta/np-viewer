@@ -20,12 +20,16 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceManager
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import io.github.tetratheta.npviewer.R
 import io.github.tetratheta.npviewer.layout.TopSwipeRefreshLayout
+import io.github.tetratheta.npviewer.update.UpdateChecker
+import io.github.tetratheta.npviewer.update.UpdateNotifier
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
   private lateinit var errorView: LinearLayout
@@ -33,16 +37,21 @@ class MainActivity : AppCompatActivity() {
   private lateinit var retryButton: Button
   private lateinit var swipeRefresh: TopSwipeRefreshLayout
   private lateinit var webView: WebView
+
+  /** 페이지별 스크롤 위치 캐시 (Least Recentely Used 방식) */
   private val scrollPositions = LinkedHashMap<String, Int>(16, 0.75f, true)
+
+  /** DocumentStartScript API 지원 여부 */
   private val supportsDocumentStartScript = WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)
   private var lastBackPress = 0L
   private var restoringFromViewer = false
 
   companion object {
-    private const val MAX_SCROLL_CACHE_SIZE = 50
+    private const val MAX_SCROLL_CACHE = 10
     private const val VIEWER_URL_PART = "novelpia.com/viewer/"
   }
 
+  /** JS에서 호출하여 이전 스크롤 위치를 복원하는 인터페이스 */
   inner class ScrollRestoreInterface {
     @JavascriptInterface
     fun getScrollY(url: String): Int {
@@ -58,18 +67,41 @@ class MainActivity : AppCompatActivity() {
     enableEdgeToEdge()
     setContentView(R.layout.activity_main)
 
+    bindViews()
+    setupEdgeToEdge()
+    setupWebView()
+    setupListeners()
+    setupUpdate()
+
+    if (savedInstanceState != null) {
+      webView.restoreState(savedInstanceState)
+    } else {
+      webView.loadUrl(intent?.data?.toString() ?: "https://novelpia.com/mybook")
+    }
+
+    setupBackHandler()
+  }
+
+  // region 초기화
+
+  private fun bindViews() {
     errorView = findViewById(R.id.error_view)
     progressBar = findViewById(R.id.progress_bar)
     retryButton = findViewById(R.id.retry_button)
     swipeRefresh = findViewById(R.id.swipe_refresh)
     webView = findViewById(R.id.webview)
+  }
 
+  private fun setupEdgeToEdge() {
     ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-      val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-      v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+      val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+      v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
       insets
     }
+  }
 
+  @SuppressLint("SetJavaScriptEnabled", "RequiresFeature")
+  private fun setupWebView() {
     webView.settings.apply {
       javaScriptEnabled = true
       domStorageEnabled = true
@@ -77,6 +109,7 @@ class MainActivity : AppCompatActivity() {
 
     webView.addJavascriptInterface(ScrollRestoreInterface(), "_ScrollRestore")
 
+    // DOMContentLoaded에서 스크롤 복원 (DocumentStartScript 지원 시)
     if (supportsDocumentStartScript) {
       WebViewCompat.addDocumentStartJavaScript(
         webView, """
@@ -88,31 +121,27 @@ class MainActivity : AppCompatActivity() {
             }, { once: true });
           }
         })();
-      """.trimIndent(), setOf("*")
+        """.trimIndent(), setOf("*")
       )
     }
 
     webView.webChromeClient = object : WebChromeClient() {
       override fun onProgressChanged(view: WebView, newProgress: Int) {
-        if (newProgress < 100) {
-          progressBar.visibility = View.VISIBLE
-          progressBar.progress = newProgress
-        } else {
-          progressBar.visibility = View.GONE
-        }
+        progressBar.visibility = if (newProgress < 100) View.VISIBLE else View.GONE
+        progressBar.progress = newProgress
       }
     }
 
     webView.webViewClient = object : WebViewClient() {
       override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         val host = request.url.host ?: return false
-        return if (host.endsWith("novelpia.com")) {
+        if (host.endsWith("novelpia.com")) {
           saveScrollPosition()
-          false
-        } else {
-          startActivity(Intent(Intent.ACTION_VIEW, request.url))
-          true
+          return false
         }
+        // 외부 링크는 기본 브라우저로
+        startActivity(Intent(Intent.ACTION_VIEW, request.url))
+        return true
       }
 
       override fun onPageFinished(view: WebView, url: String?) {
@@ -120,6 +149,7 @@ class MainActivity : AppCompatActivity() {
         errorView.visibility = View.GONE
         swipeRefresh.visibility = View.VISIBLE
 
+        // DocumentStartScript 미지원 시 fallback 스크롤 복원
         if (!supportsDocumentStartScript && restoringFromViewer) {
           restoringFromViewer = false
           url?.let { scrollPositions[it]?.let { y -> view.scrollTo(0, y) } }
@@ -133,16 +163,16 @@ class MainActivity : AppCompatActivity() {
         errorView.visibility = View.VISIBLE
       }
     }
+  }
 
+  private fun setupListeners() {
     retryButton.setOnClickListener {
       errorView.visibility = View.GONE
       swipeRefresh.visibility = View.VISIBLE
       webView.reload()
     }
 
-    swipeRefresh.setOnRefreshListener {
-      webView.reload()
-    }
+    swipeRefresh.setOnRefreshListener { webView.reload() }
 
     webView.setOnLongClickListener {
       AlertDialog.Builder(this).setItems(arrayOf(getString(R.string.menu_settings))) { _, which ->
@@ -150,14 +180,19 @@ class MainActivity : AppCompatActivity() {
       }.show()
       true
     }
+  }
 
-    if (savedInstanceState != null) {
-      webView.restoreState(savedInstanceState)
-    } else {
-      val deepLink = intent?.data?.toString()
-      webView.loadUrl(deepLink ?: "https://novelpia.com/mybook")
+  private fun setupUpdate() {
+    UpdateNotifier.initChannel(this)
+    UpdateChecker.processAppUpdate(this)
+
+    val autoCheck = PreferenceManager.getDefaultSharedPreferences(this).getBoolean("auto_check_update", true)
+    if (autoCheck) {
+      lifecycleScope.launch { UpdateChecker.checkAndNotify(applicationContext) }
     }
+  }
 
+  private fun setupBackHandler() {
     onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
       override fun handleOnBackPressed() {
         if (webView.canGoBack()) {
@@ -179,27 +214,25 @@ class MainActivity : AppCompatActivity() {
     })
   }
 
+  // endregion
+
   override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
     val url = webView.url ?: ""
     if (url.contains(VIEWER_URL_PART)) {
       val prefs = PreferenceManager.getDefaultSharedPreferences(this)
       if (prefs.getString("volume_behavior", "move_page") == "move_page") {
         val upPrev = prefs.getString("volume_direction", "up_prev") == "up_prev"
-        when (keyCode) {
-          KeyEvent.KEYCODE_VOLUME_UP -> {
-            val sel = if (upPrev) "#novel_drawing_left" else "#novel_drawing_right"
-            webView.evaluateJavascript("document.querySelector('$sel')?.click()", null)
-            return true
-          }
-
-          KeyEvent.KEYCODE_VOLUME_DOWN -> {
-            val sel = if (upPrev) "#novel_drawing_right" else "#novel_drawing_left"
-            webView.evaluateJavascript("document.querySelector('$sel')?.click()", null)
-            return true
-          }
+        // 볼륨 업/다운에 따라 이전/다음 페이지 클릭
+        val selector = when (keyCode) {
+          KeyEvent.KEYCODE_VOLUME_UP -> if (upPrev) "#novel_drawing_left" else "#novel_drawing_right"
+          KeyEvent.KEYCODE_VOLUME_DOWN -> if (upPrev) "#novel_drawing_right" else "#novel_drawing_left"
+          else -> null
+        }
+        if (selector != null) {
+          webView.evaluateJavascript("document.querySelector('$selector')?.click()", null)
+          return true
         }
       }
-
     }
     return super.onKeyDown(keyCode, event)
   }
@@ -212,8 +245,7 @@ class MainActivity : AppCompatActivity() {
   override fun onResume() {
     super.onResume()
     val prefs = PreferenceManager.getDefaultSharedPreferences(this)
-    swipeRefresh.triggerFraction =
-      prefs.getString("swipe_fraction", null)?.toFloatOrNull() ?: TopSwipeRefreshLayout.Companion.DEFAULT_TRIGGER_FRACTION
+    swipeRefresh.triggerFraction = prefs.getString("swipe_fraction", null)?.toFloatOrNull() ?: TopSwipeRefreshLayout.DEFAULT_TRIGGER_FRACTION
   }
 
   override fun onSaveInstanceState(outState: Bundle) {
@@ -224,10 +256,9 @@ class MainActivity : AppCompatActivity() {
   private fun saveScrollPosition() {
     val url = webView.url ?: return
     if (url.contains(VIEWER_URL_PART)) return
-    val scrollY = webView.scrollY
-    if (scrollPositions.size >= MAX_SCROLL_CACHE_SIZE && !scrollPositions.containsKey(url)) {
+    if (scrollPositions.size >= MAX_SCROLL_CACHE && !scrollPositions.containsKey(url)) {
       scrollPositions.remove(scrollPositions.keys.first())
     }
-    scrollPositions[url] = scrollY
+    scrollPositions[url] = webView.scrollY
   }
 }
