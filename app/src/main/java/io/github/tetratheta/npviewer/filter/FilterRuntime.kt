@@ -57,6 +57,9 @@ class FilterRuntime private constructor(private val app: Application) {
 
   @Volatile
   private var runtimeFailureLogged = false
+  private val imageExtRegex = Regex(".*\\.(png|jpe?g|gif|webp|svg)(\\?.*)?$", RegexOption.IGNORE_CASE)
+  private val fontExtRegex = Regex(".*\\.(woff2?|ttf|otf)(\\?.*)?$", RegexOption.IGNORE_CASE)
+  private val scriptExtRegex = Regex(".*\\.(js|mjs)(\\?.*)?$", RegexOption.IGNORE_CASE)
 
   @Synchronized
   fun updateSubscriptions(force: Boolean = false): FilterUpdateSummary = repository.updateSubscriptions(force)
@@ -73,10 +76,12 @@ class FilterRuntime private constructor(private val app: Application) {
       runtimeFailed = false
       runtimeFailureLogged = false
       cosmeticCache.clear()
+      repository.invalidateRuleCache()
       return
     }
-    val lists = repository.loadRuleTexts()
-    val fingerprint = lists.joinToString(separator = "\u0000") { it }.hashCode().toString()
+    val snapshot = repository.loadRuleSnapshot(forceReload = force)
+    val lists = snapshot.rules
+    val fingerprint = snapshot.fingerprint
     if (force || fingerprint != currentFingerprint) {
       nativeCosmeticRules = lists.flatMap(UserCosmeticRules::compile)
       currentFingerprint = fingerprint
@@ -235,9 +240,9 @@ class FilterRuntime private constructor(private val app: Application) {
       destination == "object" || destination == "embed" -> 16
       destination == "empty" -> 64
       request.url.toString().endsWith(".css", ignoreCase = true) -> 8
-      request.url.toString().matches(Regex(".*\\.(png|jpe?g|gif|webp|svg)(\\?.*)?$", RegexOption.IGNORE_CASE)) -> 32
-      request.url.toString().matches(Regex(".*\\.(woff2?|ttf|otf)(\\?.*)?$", RegexOption.IGNORE_CASE)) -> 256
-      request.url.toString().matches(Regex(".*\\.(js|mjs)(\\?.*)?$", RegexOption.IGNORE_CASE)) -> 4
+      request.url.toString().matches(imageExtRegex) -> 32
+      request.url.toString().matches(fontExtRegex) -> 256
+      request.url.toString().matches(scriptExtRegex) -> 4
       else -> 4096
     }
   }

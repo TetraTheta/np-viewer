@@ -11,9 +11,16 @@ data class FilterUpdateSummary(
   val updatedCount: Int, val failedCount: Int, val lastError: String? = null
 )
 
+data class RuleSetSnapshot(
+  val fingerprint: String,
+  val rules: List<String>
+)
+
 class FilterRepository(private val context: Context) {
   private val prefs = FilterPreferences.prefs(context)
   private val filtersDir = File(context.filesDir, "filters").apply { mkdirs() }
+  private var cachedStateKey: String? = null
+  private var cachedSnapshot: RuleSetSnapshot? = null
 
   fun getSubscriptionUrls(): List<String> = FilterPreferences.getSubscriptionUrls(context)
 
@@ -21,7 +28,16 @@ class FilterRepository(private val context: Context) {
 
   fun hasAnyActiveSource(): Boolean = getSubscriptionUrls().isNotEmpty() || getUserRules().isNotBlank()
 
-  fun loadRuleTexts(): List<String> {
+  fun loadRuleTexts(): List<String> = loadRuleSnapshot().rules
+
+  @Synchronized
+  fun loadRuleSnapshot(forceReload: Boolean = false): RuleSetSnapshot {
+    val stateKey = buildStateKey()
+    val cached = cachedSnapshot
+    if (!forceReload && cached != null && cachedStateKey == stateKey) {
+      return cached
+    }
+
     val rules = mutableListOf<String>()
     getSubscriptionUrls().forEach { url ->
       val file = fileForUrl(url)
@@ -32,7 +48,13 @@ class FilterRepository(private val context: Context) {
     }
     val userRules = getUserRules()
     if (userRules.isNotBlank()) rules += userRules
-    return rules
+    val snapshot = RuleSetSnapshot(
+      fingerprint = rules.joinToString(separator = "\u0000") { it }.hashCode().toString(),
+      rules = rules
+    )
+    cachedStateKey = stateKey
+    cachedSnapshot = snapshot
+    return snapshot
   }
 
   fun updateSubscriptions(force: Boolean = false): FilterUpdateSummary {
@@ -73,7 +95,36 @@ class FilterRepository(private val context: Context) {
         putString(FilterPreferences.KEY_LAST_UPDATE_ERROR, lastError)
       }
     }
+    invalidateRuleCache()
     return FilterUpdateSummary(updated, failed, lastError)
+  }
+
+  @Synchronized
+  fun invalidateRuleCache() {
+    cachedStateKey = null
+    cachedSnapshot = null
+  }
+
+  private fun buildStateKey(): String {
+    val urls = getSubscriptionUrls()
+    val userRules = getUserRules()
+    val sb = StringBuilder()
+    urls.forEach { url ->
+      val file = fileForUrl(url)
+      sb.append(url)
+      sb.append('|')
+      if (file.exists()) {
+        sb.append(file.length())
+        sb.append(':')
+        sb.append(file.lastModified())
+      } else {
+        sb.append("missing")
+      }
+      sb.append('\n')
+    }
+    sb.append("user:")
+    sb.append(userRules.hashCode())
+    return sb.toString()
   }
 
   private fun download(url: String): String {

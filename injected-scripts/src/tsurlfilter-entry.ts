@@ -1,11 +1,9 @@
 import {
-  BufferRuleList,
   CosmeticOption,
   Engine,
-  FilterListPreprocessor,
   Request,
   RequestType,
-  RuleStorage,
+  StringRuleList,
   TSURLFILTER_VERSION,
   setConfiguration
 } from "@adguard/tsurlfilter";
@@ -15,25 +13,21 @@ declare global {
 }
 
 type RuntimeExports = {
-  BufferRuleList: typeof BufferRuleList;
   CosmeticOption: typeof CosmeticOption;
   Engine: typeof Engine;
-  FilterListPreprocessor: typeof FilterListPreprocessor;
   Request: typeof Request;
   RequestType: typeof RequestType;
-  RuleStorage: typeof RuleStorage;
+  StringRuleList: typeof StringRuleList;
   TSURLFILTER_VERSION: string;
   setConfiguration: typeof setConfiguration;
 };
 
 const runtime: RuntimeExports = {
-  BufferRuleList,
   CosmeticOption,
   Engine,
-  FilterListPreprocessor,
   Request,
   RequestType,
-  RuleStorage,
+  StringRuleList,
   TSURLFILTER_VERSION,
   setConfiguration
 };
@@ -77,11 +71,12 @@ globalThis.NPFilterRuntimeApi = {
       verbose: false
     });
 
-    const lists = payload.lists.map((rulesText, listId) => {
-      const processed = FilterListPreprocessor.preprocess(rulesText);
-      return new BufferRuleList(listId, processed.filterList, false, false, false, processed.sourceMap);
+    engine = Engine.createSync({
+      filters: payload.lists.map((rulesText, listId) => ({
+        id: listId,
+        content: rulesText
+      }))
     });
-    engine = new Engine(new RuleStorage(lists));
     return JSON.stringify({
       ok: true,
       rulesCount: engine.getRulesCount(),
