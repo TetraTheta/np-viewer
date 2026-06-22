@@ -34,6 +34,7 @@
   <string name="noti_update_ready_title">업데이트 준비됨</string>
   <string name="pref_category_ad_blocking">광고 차단</string>
   <string name="pref_category_data">데이터</string>
+  <string name="pref_category_start_page">시작 페이지</string>
   <string name="pref_category_system">시스템 설정</string>
   <string name="pref_category_update">업데이트</string>
   <string name="pref_category_viewer">뷰어</string>
@@ -70,11 +71,18 @@
   <string name="pref_key_filters_user_rules">사용자 필터</string>
   <string name="pref_key_install_update">업데이트 설치</string>
   <string name="pref_key_open_link_settings">링크 처리 활성화</string>
+  <string name="pref_key_start_page">시작 페이지</string>
   <string name="pref_key_swipe_fraction">당겨서 새로고침 영역</string>
   <string name="pref_key_volume_behavior">뷰어 볼륨 키 동작</string>
   <string name="pref_key_volume_direction">뷰어 볼륨 키 방향</string>
   <string name="press_twice_to_exit">\'뒤로\' 버튼을 한 번 더 누르시면 종료됩니다.</string>
   <string name="retry_button_text">다시 시도</string>
+  <string name="start_page_home_title">홈페이지</string>
+  <string name="start_page_home_url">https://novelpia.com</string>
+  <string name="start_page_last_view_title">최근 본 작품</string>
+  <string name="start_page_last_view_url">https://novelpia.com/mybook/last_view</string>
+  <string name="start_page_mybook_title">내 서재</string>
+  <string name="start_page_mybook_url">https://novelpia.com/mybook</string>
   <string name="title_activity_settings">설정</string>
   <string name="title_clear_cookie">쿠키 삭제</string>
   <string name="title_filters_subscriptions">필터 구독 URL</string>

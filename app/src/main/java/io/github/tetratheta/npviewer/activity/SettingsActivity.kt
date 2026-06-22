@@ -13,6 +13,8 @@ import android.webkit.CookieManager
 import android.webkit.WebStorage
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -23,6 +25,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
+import androidx.preference.PreferenceManager
 import io.github.tetratheta.npviewer.R
 import io.github.tetratheta.npviewer.filter.FilterPreferences
 import io.github.tetratheta.npviewer.filter.FilterRuntime
@@ -57,6 +60,10 @@ class SettingsActivity : AppCompatActivity() {
     companion object {
       // @RequiresApi(33) 회피를 위해 문자열 상수로 선언
       private const val POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS"
+      private const val START_PAGE_KEY = "start_page"
+      private const val START_PAGE_HOME_URL = "https://novelpia.com"
+      private const val START_PAGE_LAST_VIEW_URL = "https://novelpia.com/mybook/last_view"
+      private const val START_PAGE_MYBOOK_URL = "https://novelpia.com/mybook"
     }
 
     private val notificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -77,29 +84,129 @@ class SettingsActivity : AppCompatActivity() {
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
       setPreferencesFromResource(R.xml.root_preferences, rootKey)
-      setupVersionPref()
+      setupStartPagePref()
       setupLinkSettingsPref()
-      setupUpdatePrefs()
       setupFilterPrefs()
       setupDataPrefs()
+      setupVersionPref()
+      setupUpdatePrefs()
     }
 
     override fun onResume() {
       super.onResume()
+      refreshStartPagePref()
       refreshLinkSettingsPref()
       lifecycleScope.launch {
+        refreshFilterPrefs()
         refreshStorageSummaries()
         refreshUpdatePrefs()
-        refreshFilterPrefs()
       }
     }
 
-    // region 프리퍼런스 설정
+    // region 시작 페이지
 
-    private fun setupVersionPref() {
-      findPreference<Preference>("current_version")?.summary =
-        requireContext().packageManager.getPackageInfo(requireContext().packageName, 0).versionName
+    private fun setupStartPagePref() {
+      findPreference<Preference>(START_PAGE_KEY)?.setOnPreferenceClickListener {
+        showStartPageDialog()
+        true
+      }
+      refreshStartPagePref()
     }
+
+    private fun refreshStartPagePref() {
+      val pref = findPreference<Preference>(START_PAGE_KEY) ?: return
+      val selected = getSelectedStartPageOption()
+      pref.summary = selected.title
+    }
+
+    private fun showStartPageDialog() {
+      val context = requireContext()
+      val options = getStartPageOptions()
+      val selectedUrl = getSelectedStartPageOption().url
+      val container = LinearLayout(context).apply {
+        orientation = LinearLayout.VERTICAL
+        val horizontalPadding = (20 * resources.displayMetrics.density).toInt()
+        val verticalPadding = (8 * resources.displayMetrics.density).toInt()
+        setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
+      }
+
+      val dialog =
+        AlertDialog.Builder(context).setTitle(R.string.pref_key_start_page).setView(container).setNegativeButton(R.string.btn_cancel, null).create()
+
+      options.forEach { option ->
+        val row = createStartPageOptionView(option, option.url == selectedUrl) {
+          PreferenceManager.getDefaultSharedPreferences(context).edit {
+            putString(START_PAGE_KEY, option.url)
+          }
+          refreshStartPagePref()
+          dialog.dismiss()
+        }
+        container.addView(row)
+      }
+
+      dialog.show()
+    }
+
+    private fun createStartPageOptionView(option: StartPageOption, checked: Boolean, onClick: () -> Unit): LinearLayout {
+      val density = resources.displayMetrics.density
+      val verticalPadding = (12 * density).toInt()
+      val row = LinearLayout(requireContext()).apply {
+        orientation = LinearLayout.HORIZONTAL
+        setPadding(0, verticalPadding, 0, verticalPadding)
+        isClickable = true
+        isFocusable = true
+        setOnClickListener { onClick() }
+      }
+
+      row.addView(
+        RadioButton(requireContext()).apply {
+          isChecked = checked
+          isClickable = false
+        })
+
+      val textContainer = LinearLayout(requireContext()).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding((8 * density).toInt(), 0, 0, 0)
+      }
+
+      textContainer.addView(
+        TextView(requireContext()).apply {
+          text = option.title
+          textSize = 16f
+        })
+      textContainer.addView(
+        TextView(requireContext()).apply {
+          text = option.url
+          textSize = 13f
+          alpha = 0.7f
+        })
+
+      row.addView(
+        textContainer, LinearLayout.LayoutParams(
+          LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+      )
+      return row
+    }
+
+    private fun getSelectedStartPageOption(): StartPageOption {
+      val options = getStartPageOptions()
+      val selectedUrl =
+        PreferenceManager.getDefaultSharedPreferences(requireContext()).getString(START_PAGE_KEY, START_PAGE_MYBOOK_URL) ?: START_PAGE_MYBOOK_URL
+      return options.firstOrNull { it.url == selectedUrl } ?: options.first { it.url == START_PAGE_MYBOOK_URL }
+    }
+
+    private fun getStartPageOptions(): List<StartPageOption> = listOf(
+      StartPageOption(getString(R.string.start_page_home_title), START_PAGE_HOME_URL),
+      StartPageOption(getString(R.string.start_page_mybook_title), START_PAGE_MYBOOK_URL),
+      StartPageOption(getString(R.string.start_page_last_view_title), START_PAGE_LAST_VIEW_URL)
+    )
+
+    private data class StartPageOption(val title: String, val url: String)
+
+    // endregion
+
+    // region 시스템 설정
 
     private fun setupLinkSettingsPref() {
       findPreference<Preference>("open_link_settings")?.setOnPreferenceClickListener {
@@ -108,50 +215,33 @@ class SettingsActivity : AppCompatActivity() {
       }
     }
 
-    private fun setupUpdatePrefs() {
-      findPreference<Preference>("check_update")?.setOnPreferenceClickListener {
-        requestNotificationPermissionThen { lifecycleScope.launch { forceCheckUpdate() } }
-        true
-      }
-
-      findPreference<Preference>("download_update")?.setOnPreferenceClickListener {
-        val apkPath = UpdateChecker.prefs(requireContext()).getString(UpdateChecker.KEY_APK_PATH, null)
-        if (apkPath != null && File(apkPath).exists()) {
-          triggerInstall(apkPath)
-        } else {
-          requestNotificationPermissionThen { triggerDownload() }
-        }
-        true
-      }
+    private fun refreshLinkSettingsPref() {
+      val pref = findPreference<Preference>("open_link_settings") ?: return
+      val approved = isLinkApproved()
+      pref.isEnabled = !approved
+      pref.summary = getString(
+        if (approved) R.string.pref_desc_open_link_settings_enabled
+        else R.string.pref_desc_open_link_settings_disabled
+      )
     }
 
-    private fun setupDataPrefs() {
-      findPreference<Preference>("clear_cache")?.setOnPreferenceClickListener {
-        lifecycleScope.launch {
-          withContext(Dispatchers.IO) { requireContext().cacheDir.deleteRecursively() }
-          Toast.makeText(context, R.string.msg_clear_cache, Toast.LENGTH_SHORT).show()
-          refreshCacheSummary()
-        }
-        true
-      }
-
-      findPreference<Preference>("clear_webstorage")?.setOnPreferenceClickListener {
-        WebStorage.getInstance().deleteAllData()
-        Toast.makeText(context, R.string.msg_clear_webstorage, Toast.LENGTH_SHORT).show()
-        lifecycleScope.launch { refreshWebStorageSummary() }
-        true
-      }
-
-      findPreference<Preference>("clear_cookie")?.setOnPreferenceClickListener {
-        AlertDialog.Builder(requireContext()).setTitle(R.string.title_clear_cookie).setMessage(R.string.msg_clear_cookie_warning)
-          .setPositiveButton(R.string.btn_delete) { _, _ ->
-            CookieManager.getInstance().apply { removeAllCookies(null); flush() }
-            Toast.makeText(context, R.string.msg_clear_cookie, Toast.LENGTH_SHORT).show()
-            findPreference<Preference>("clear_cookie")?.summary = "${getString(R.string.pref_desc_clear_cookie)}\n0 B"
-          }.setNegativeButton(R.string.btn_cancel, null).show()
-        true
-      }
+    private fun isLinkApproved(): Boolean = try {
+      val manager = requireContext().getSystemService(DomainVerificationManager::class.java)
+      val state = manager.getDomainVerificationUserState(requireContext().packageName)?.hostToStateMap?.get("novelpia.com")
+      state == DomainVerificationUserState.DOMAIN_STATE_SELECTED || state == DomainVerificationUserState.DOMAIN_STATE_VERIFIED
+    } catch (_: Exception) {
+      false
     }
+
+    // endregion
+
+    // region 뷰어
+
+    // 뷰어 설정은 XML ListPreference 기본 동작만 사용한다.
+
+    // endregion
+
+    // region 광고 차단
 
     private fun setupFilterPrefs() {
       findPreference<Preference>(FilterPreferences.KEY_ENABLED)?.setOnPreferenceChangeListener { _, _ ->
@@ -226,9 +316,152 @@ class SettingsActivity : AppCompatActivity() {
       }
     }
 
+    private fun refreshFilterPrefs() {
+      val context = requireContext()
+      val urls = FilterPreferences.getSubscriptionUrls(context)
+      val userRules = FilterPreferences.getUserRules(context)
+      val lastUpdated = FilterPreferences.getLastUpdatedAt(context)
+      val lastError = FilterPreferences.getLastUpdateError(context)
+
+      findPreference<Preference>(FilterPreferences.KEY_SUBSCRIPTIONS)?.summary = buildString {
+        append(getString(R.string.pref_desc_filters_subscriptions))
+        append("\n")
+        append(if (urls.isEmpty()) "0 URL" else "${urls.size} URL")
+      }
+
+      findPreference<Preference>(FilterPreferences.KEY_USER_RULES)?.summary = buildString {
+        append(getString(R.string.pref_desc_filters_user_rules))
+        append("\n")
+        append(if (userRules.isBlank()) "0 rules" else "${userRules.lineSequence().count { it.isNotBlank() }} rules")
+      }
+
+      findPreference<Preference>("filters_update_now")?.summary = when {
+        lastError != null -> "${getString(R.string.pref_desc_filters_update_now)}\n$lastError"
+        lastUpdated > 0L -> "${getString(R.string.pref_desc_filters_update_now)}\n${
+          java.text.DateFormat.getDateTimeInstance().format(java.util.Date(lastUpdated))
+        }"
+
+        else -> getString(R.string.pref_desc_filters_update_now)
+      }
+    }
+
+    private fun showMultilineEditor(title: String, initialValue: String, onSave: (String) -> Unit) {
+      val editText = EditText(requireContext()).apply {
+        setText(initialValue)
+        minLines = 8
+        gravity = android.view.Gravity.TOP or android.view.Gravity.START
+        inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+      }
+      val container = LinearLayout(requireContext()).apply {
+        val padding = (24 * resources.displayMetrics.density).toInt()
+        setPadding(padding, padding / 2, padding, 0)
+        addView(
+          editText, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+          )
+        )
+      }
+
+      AlertDialog.Builder(requireContext()).setTitle(title).setView(container)
+        .setPositiveButton(android.R.string.ok) { _, _ -> onSave(editText.text.toString()) }.setNegativeButton(R.string.btn_cancel, null).show()
+    }
+
+    // endregion
+
+    // region 데이터
+
+    private fun setupDataPrefs() {
+      findPreference<Preference>("clear_cache")?.setOnPreferenceClickListener {
+        lifecycleScope.launch {
+          withContext(Dispatchers.IO) { requireContext().cacheDir.deleteRecursively() }
+          Toast.makeText(context, R.string.msg_clear_cache, Toast.LENGTH_SHORT).show()
+          refreshCacheSummary()
+        }
+        true
+      }
+
+      findPreference<Preference>("clear_webstorage")?.setOnPreferenceClickListener {
+        WebStorage.getInstance().deleteAllData()
+        Toast.makeText(context, R.string.msg_clear_webstorage, Toast.LENGTH_SHORT).show()
+        lifecycleScope.launch { refreshWebStorageSummary() }
+        true
+      }
+
+      findPreference<Preference>("clear_cookie")?.setOnPreferenceClickListener {
+        AlertDialog.Builder(requireContext()).setTitle(R.string.title_clear_cookie).setMessage(R.string.msg_clear_cookie_warning)
+          .setPositiveButton(R.string.btn_delete) { _, _ ->
+            CookieManager.getInstance().apply { removeAllCookies(null); flush() }
+            Toast.makeText(context, R.string.msg_clear_cookie, Toast.LENGTH_SHORT).show()
+            findPreference<Preference>("clear_cookie")?.summary = "${getString(R.string.pref_desc_clear_cookie)}\n0 B"
+          }.setNegativeButton(R.string.btn_cancel, null).show()
+        true
+      }
+    }
+
+    private suspend fun refreshStorageSummaries() {
+      coroutineScope {
+        launch { refreshCacheSummary() }
+        launch { refreshWebStorageSummary() }
+        launch { refreshCookieSummary() }
+      }
+    }
+
+    private suspend fun refreshCacheSummary() {
+      val size = withContext(Dispatchers.IO) {
+        requireContext().cacheDir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+      }
+      findPreference<Preference>("clear_cache")?.summary = "${getString(R.string.pref_desc_clear_cache)}\n${formatSize(size)}"
+    }
+
+    private suspend fun refreshWebStorageSummary() {
+      val size = suspendCancellableCoroutine { cont ->
+        WebStorage.getInstance().getOrigins { origins ->
+          cont.resume(origins?.values?.filterIsInstance<WebStorage.Origin>()?.sumOf { it.usage } ?: 0L)
+        }
+      }
+      findPreference<Preference>("clear_webstorage")?.summary = "${getString(R.string.pref_desc_clear_webstorage)}\n${formatSize(size)}"
+    }
+
+    private suspend fun refreshCookieSummary() {
+      val size = withContext(Dispatchers.IO) {
+        val cookieFile = File(requireContext().dataDir, "app_webview/Default/Cookies")
+        if (cookieFile.exists()) cookieFile.length() else 0L
+      }
+      findPreference<Preference>("clear_cookie")?.summary = "${getString(R.string.pref_desc_clear_cookie)}\n${formatSize(size)}"
+    }
+
+    private fun formatSize(bytes: Long): String = when {
+      bytes <= 0L -> "0 B"
+      bytes < 1_024L -> "$bytes B"
+      bytes < 1_048_576L -> "${bytes / 1_024} KB"
+      else -> "%.1f MB".format(bytes / 1_048_576.0)
+    }
+
     // endregion
 
     // region 업데이트
+
+    private fun setupVersionPref() {
+      findPreference<Preference>("current_version")?.summary =
+        requireContext().packageManager.getPackageInfo(requireContext().packageName, 0).versionName
+    }
+
+    private fun setupUpdatePrefs() {
+      findPreference<Preference>("check_update")?.setOnPreferenceClickListener {
+        requestNotificationPermissionThen { lifecycleScope.launch { forceCheckUpdate() } }
+        true
+      }
+
+      findPreference<Preference>("download_update")?.setOnPreferenceClickListener {
+        val apkPath = UpdateChecker.prefs(requireContext()).getString(UpdateChecker.KEY_APK_PATH, null)
+        if (apkPath != null && File(apkPath).exists()) {
+          triggerInstall(apkPath)
+        } else {
+          requestNotificationPermissionThen { triggerDownload() }
+        }
+        true
+      }
+    }
 
     private fun refreshUpdatePrefs() {
       if (!isAdded) return
@@ -350,10 +583,6 @@ class SettingsActivity : AppCompatActivity() {
       startActivity(installIntent)
     }
 
-    // endregion
-
-    // region 알림 권한 (API 33+)
-
     /** POST_NOTIFICATIONS 권한을 확인하고 필요 시 요청한 후 [action] 실행 */
     private fun requestNotificationPermissionThen(action: () -> Unit) {
       if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || ContextCompat.checkSelfPermission(
@@ -384,125 +613,6 @@ class SettingsActivity : AppCompatActivity() {
             data = Uri.fromParts("package", requireContext().packageName, null)
           })
         }.setNegativeButton(R.string.btn_cancel, null).show()
-    }
-
-    // endregion
-
-    // region 링크 설정
-
-    private fun refreshLinkSettingsPref() {
-      val pref = findPreference<Preference>("open_link_settings") ?: return
-      val approved = isLinkApproved()
-      pref.isEnabled = !approved
-      pref.summary = getString(
-        if (approved) R.string.pref_desc_open_link_settings_enabled
-        else R.string.pref_desc_open_link_settings_disabled
-      )
-    }
-
-    private fun isLinkApproved(): Boolean = try {
-      val manager = requireContext().getSystemService(DomainVerificationManager::class.java)
-      val state = manager.getDomainVerificationUserState(requireContext().packageName)?.hostToStateMap?.get("novelpia.com")
-      state == DomainVerificationUserState.DOMAIN_STATE_SELECTED || state == DomainVerificationUserState.DOMAIN_STATE_VERIFIED
-    } catch (_: Exception) {
-      false
-    }
-
-    // endregion
-
-    // region 저장 용량 요약
-
-    private suspend fun refreshStorageSummaries() {
-      coroutineScope {
-        launch { refreshCacheSummary() }
-        launch { refreshWebStorageSummary() }
-        launch { refreshCookieSummary() }
-      }
-    }
-
-    private suspend fun refreshCacheSummary() {
-      val size = withContext(Dispatchers.IO) {
-        requireContext().cacheDir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
-      }
-      findPreference<Preference>("clear_cache")?.summary = "${getString(R.string.pref_desc_clear_cache)}\n${formatSize(size)}"
-    }
-
-    private suspend fun refreshWebStorageSummary() {
-      val size = suspendCancellableCoroutine { cont ->
-        WebStorage.getInstance().getOrigins { origins ->
-          cont.resume(origins?.values?.filterIsInstance<WebStorage.Origin>()?.sumOf { it.usage } ?: 0L)
-        }
-      }
-      findPreference<Preference>("clear_webstorage")?.summary = "${getString(R.string.pref_desc_clear_webstorage)}\n${formatSize(size)}"
-    }
-
-    private suspend fun refreshCookieSummary() {
-      val size = withContext(Dispatchers.IO) {
-        val cookieFile = File(requireContext().dataDir, "app_webview/Default/Cookies")
-        if (cookieFile.exists()) cookieFile.length() else 0L
-      }
-      findPreference<Preference>("clear_cookie")?.summary = "${getString(R.string.pref_desc_clear_cookie)}\n${formatSize(size)}"
-    }
-
-    private fun formatSize(bytes: Long): String = when {
-      bytes <= 0L -> "0 B"
-      bytes < 1_024L -> "$bytes B"
-      bytes < 1_048_576L -> "${bytes / 1_024} KB"
-      else -> "%.1f MB".format(bytes / 1_048_576.0)
-    }
-
-    // endregion
-
-    // region 필터
-
-    private fun refreshFilterPrefs() {
-      val context = requireContext()
-      val urls = FilterPreferences.getSubscriptionUrls(context)
-      val userRules = FilterPreferences.getUserRules(context)
-      val lastUpdated = FilterPreferences.getLastUpdatedAt(context)
-      val lastError = FilterPreferences.getLastUpdateError(context)
-
-      findPreference<Preference>(FilterPreferences.KEY_SUBSCRIPTIONS)?.summary = buildString {
-        append(getString(R.string.pref_desc_filters_subscriptions))
-        append("\n")
-        append(if (urls.isEmpty()) "0 URL" else "${urls.size} URL")
-      }
-
-      findPreference<Preference>(FilterPreferences.KEY_USER_RULES)?.summary = buildString {
-        append(getString(R.string.pref_desc_filters_user_rules))
-        append("\n")
-        append(if (userRules.isBlank()) "0 rules" else "${userRules.lineSequence().count { it.isNotBlank() }} rules")
-      }
-
-      findPreference<Preference>("filters_update_now")?.summary = when {
-        lastError != null -> "${getString(R.string.pref_desc_filters_update_now)}\n$lastError"
-        lastUpdated > 0L -> "${getString(R.string.pref_desc_filters_update_now)}\n${
-          java.text.DateFormat.getDateTimeInstance().format(java.util.Date(lastUpdated))
-        }"
-
-        else -> getString(R.string.pref_desc_filters_update_now)
-      }
-    }
-
-    private fun showMultilineEditor(title: String, initialValue: String, onSave: (String) -> Unit) {
-      val editText = EditText(requireContext()).apply {
-        setText(initialValue)
-        minLines = 8
-        gravity = android.view.Gravity.TOP or android.view.Gravity.START
-        inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-      }
-      val container = LinearLayout(requireContext()).apply {
-        val padding = (24 * resources.displayMetrics.density).toInt()
-        setPadding(padding, padding / 2, padding, 0)
-        addView(
-          editText, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-          )
-        )
-      }
-
-      AlertDialog.Builder(requireContext()).setTitle(title).setView(container)
-        .setPositiveButton(android.R.string.ok) { _, _ -> onSave(editText.text.toString()) }.setNegativeButton(R.string.btn_cancel, null).show()
     }
 
     // endregion

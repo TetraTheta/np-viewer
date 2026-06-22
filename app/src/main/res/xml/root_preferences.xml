@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.preference.PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+  <PreferenceCategory app:title="@string/pref_category_start_page">
+    <Preference
+        app:key="start_page"
+        app:title="@string/pref_key_start_page"
+        app:summary="@string/start_page_mybook_title" />
+  </PreferenceCategory>
   <PreferenceCategory app:title="@string/pref_category_system">
     <Preference
         app:key="open_link_settings"

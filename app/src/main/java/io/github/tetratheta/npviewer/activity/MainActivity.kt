@@ -54,7 +54,9 @@ class MainActivity : AppCompatActivity() {
   private var restoringFromViewer = false
 
   companion object {
+    private const val DEFAULT_START_PAGE_URL = "https://novelpia.com/mybook"
     private const val MAX_SCROLL_CACHE = 10
+    private const val START_PAGE_KEY = "start_page"
     private const val VIEWER_URL_PART = "novelpia.com/viewer/"
   }
 
@@ -96,7 +98,7 @@ class MainActivity : AppCompatActivity() {
     if (savedInstanceState != null) {
       webView.restoreState(savedInstanceState)
     } else {
-      webView.loadUrl(intent?.data?.toString() ?: "https://novelpia.com/mybook")
+      webView.loadUrl(intent?.data?.toString() ?: getStartPageUrl())
     }
 
     setupBackHandler()
@@ -309,6 +311,11 @@ class MainActivity : AppCompatActivity() {
 
   private fun refreshCosmeticFilters(view: WebView) {
     view.evaluateJavascript("window.__npviewerRefreshCosmetic&&window.__npviewerRefreshCosmetic();", null)
+  }
+
+  private fun getStartPageUrl(): String {
+    val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+    return prefs.getString(START_PAGE_KEY, DEFAULT_START_PAGE_URL) ?: DEFAULT_START_PAGE_URL
   }
 
   @Suppress("SameParameterValue")
