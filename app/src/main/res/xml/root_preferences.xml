@@ -60,6 +60,16 @@
         app:title="@string/pref_key_filters_update_now"
         app:summary="@string/pref_desc_filters_update_now" />
   </PreferenceCategory>
+  <PreferenceCategory app:title="@string/pref_category_setting_backup">
+    <Preference
+        app:key="export_settings"
+        app:title="@string/pref_key_export_settings"
+        app:summary="@string/pref_desc_export_settings" />
+    <Preference
+        app:key="import_settings"
+        app:title="@string/pref_key_import_settings"
+        app:summary="@string/pref_desc_import_settings" />
+  </PreferenceCategory>
   <PreferenceCategory app:title="@string/pref_category_data">
     <Preference
         app:key="clear_cache"

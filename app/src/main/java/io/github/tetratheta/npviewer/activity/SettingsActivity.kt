@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.text.InputType
+import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.WebStorage
 import android.widget.EditText
@@ -23,12 +24,17 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
+import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
 import io.github.tetratheta.npviewer.R
+import io.github.tetratheta.npviewer.bookmark.BookmarkRepository
 import io.github.tetratheta.npviewer.filter.FilterPreferences
 import io.github.tetratheta.npviewer.filter.FilterRuntime
+import io.github.tetratheta.npviewer.setting.BackupSettings
+import io.github.tetratheta.npviewer.setting.SettingBackup
+import io.github.tetratheta.npviewer.setting.SettingBackupCodec
 import io.github.tetratheta.npviewer.update.UpdateChecker
 import io.github.tetratheta.npviewer.update.UpdateInfo
 import io.github.tetratheta.npviewer.update.UpdateResult
@@ -38,6 +44,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.OutputStreamWriter
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.coroutines.resume
 
 class SettingsActivity : AppCompatActivity() {
@@ -64,6 +74,15 @@ class SettingsActivity : AppCompatActivity() {
       private const val START_PAGE_HOME_URL = "https://novelpia.com"
       private const val START_PAGE_LAST_VIEW_URL = "https://novelpia.com/mybook/last_view"
       private const val START_PAGE_MYBOOK_URL = "https://novelpia.com/mybook"
+      private const val TAG = "SettingsBackup"
+    }
+
+    private val exportSettingsLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+      if (uri != null) exportSettings(uri)
+    }
+
+    private val importSettingsLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+      if (uri != null) importSettings(uri)
     }
 
     private val notificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -87,6 +106,7 @@ class SettingsActivity : AppCompatActivity() {
       setupStartPagePref()
       setupLinkSettingsPref()
       setupFilterPrefs()
+      setupSettingBackupPrefs()
       setupDataPrefs()
       setupVersionPref()
       setupUpdatePrefs()
@@ -318,7 +338,7 @@ class SettingsActivity : AppCompatActivity() {
       findPreference<Preference>("filters_update_now")?.summary = when {
         lastError != null -> "${getString(R.string.pref_desc_filters_update_now)}\n$lastError"
         lastUpdated > 0L -> "${getString(R.string.pref_desc_filters_update_now)}\n${
-          java.text.DateFormat.getDateTimeInstance().format(java.util.Date(lastUpdated))
+          java.text.DateFormat.getDateTimeInstance().format(Date(lastUpdated))
         }"
 
         else -> getString(R.string.pref_desc_filters_update_now)
@@ -384,6 +404,140 @@ class SettingsActivity : AppCompatActivity() {
       }
       builder.show()
     }
+
+    // endregion
+
+    // region 설정 백업
+
+    private fun setupSettingBackupPrefs() {
+      findPreference<Preference>("export_settings")?.setOnPreferenceClickListener {
+        exportSettingsLauncher.launch(createSettingBackupFileName())
+        true
+      }
+
+      findPreference<Preference>("import_settings")?.setOnPreferenceClickListener {
+        importSettingsLauncher.launch(arrayOf("application/json", "text/json", "text/*", "application/octet-stream"))
+        true
+      }
+    }
+
+    private fun exportSettings(uri: Uri) {
+      runCatching {
+        val context = requireContext()
+        val exportedAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.US).format(Date())
+        val json = SettingBackupCodec.export(
+          context = context, appVersion = getCurrentAppVersion(), exportedAt = exportedAt, bookmarks = BookmarkRepository(context).getAll()
+        )
+        context.contentResolver.openOutputStream(uri)?.use { output ->
+          OutputStreamWriter(output, Charsets.UTF_8).use { writer ->
+            writer.write(json)
+          }
+        } ?: error("Output stream is null")
+      }.onSuccess {
+        Toast.makeText(requireContext(), R.string.msg_settings_exported, Toast.LENGTH_SHORT).show()
+      }.onFailure {
+        Toast.makeText(requireContext(), R.string.msg_settings_export_failed, Toast.LENGTH_SHORT).show()
+      }
+    }
+
+    private fun importSettings(uri: Uri) {
+      runCatching {
+        val json = requireContext().contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+          ?: error("Input stream is null")
+        Log.i(TAG, "Loaded settings backup file: $uri")
+        SettingBackupCodec.parse(json)
+      }.onSuccess { backup ->
+        if (backup.exportedAt == null) {
+          Log.w(TAG, "Loaded settings backup file has no exportedAt")
+        }
+        if (backup.appVersion == null) {
+          Log.w(TAG, "Loaded settings backup file has no appVersion")
+        }
+        importValidatedSettings(backup)
+      }.onFailure {
+        Toast.makeText(requireContext(), R.string.msg_settings_import_failed, Toast.LENGTH_SHORT).show()
+      }
+    }
+
+    private fun importValidatedSettings(backup: SettingBackup) {
+      val context = requireContext()
+      val repository = BookmarkRepository(context)
+      val hasExistingBookmarks = repository.getAll().isNotEmpty()
+      val shouldRefreshFilters = shouldRefreshFiltersAfterImport(backup.settings)
+
+      applyBackupSettings(backup.settings)
+      refreshImportedSettingsUi()
+      if (shouldRefreshFilters) refreshFiltersAfterImport()
+
+      if (hasExistingBookmarks) {
+        showBookmarkOverwriteDialog(repository, backup)
+      } else {
+        repository.saveAll(backup.bookmarks)
+        Toast.makeText(context, R.string.msg_settings_imported, Toast.LENGTH_SHORT).show()
+      }
+    }
+
+    private fun showBookmarkOverwriteDialog(repository: BookmarkRepository, backup: SettingBackup) {
+      AlertDialog.Builder(requireContext()).setTitle(R.string.title_import_settings_bookmark_overwrite)
+        .setMessage(R.string.msg_import_settings_bookmark_overwrite).setPositiveButton(R.string.btn_overwrite) { _, _ ->
+          repository.saveAll(backup.bookmarks)
+          Toast.makeText(requireContext(), R.string.msg_settings_imported, Toast.LENGTH_SHORT).show()
+        }.setNegativeButton(R.string.btn_skip) { _, _ ->
+          Toast.makeText(requireContext(), R.string.msg_settings_imported_without_bookmarks, Toast.LENGTH_SHORT).show()
+        }.show()
+    }
+
+    private fun applyBackupSettings(settings: BackupSettings) {
+      PreferenceManager.getDefaultSharedPreferences(requireContext()).edit {
+        putString(START_PAGE_KEY, SettingBackupCodec.startPageKeyToUrl(settings.startPage))
+        putString("volume_behavior", settings.volumeBehavior)
+        putString("volume_direction", settings.volumeDirection)
+        putString("swipe_fraction", settings.swipeFraction)
+        putBoolean(FilterPreferences.KEY_ENABLED, settings.filtersEnabled)
+        putBoolean(FilterPreferences.KEY_AUTO_UPDATE, settings.filtersAutoUpdate)
+        putBoolean("auto_check_update", settings.autoCheckUpdate)
+      }
+      FilterPreferences.setSubscriptionUrls(requireContext(), settings.filterSubscriptions)
+      FilterPreferences.setUserRuleLines(requireContext(), settings.filterUserRules)
+    }
+
+    private fun shouldRefreshFiltersAfterImport(settings: BackupSettings): Boolean {
+      val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
+      return prefs.getBoolean(FilterPreferences.KEY_ENABLED, true) != settings.filtersEnabled || prefs.getBoolean(
+        FilterPreferences.KEY_AUTO_UPDATE, true
+      ) != settings.filtersAutoUpdate || FilterPreferences.getSubscriptionUrls(requireContext()) != settings.filterSubscriptions ||
+          FilterPreferences.getUserRuleLines(requireContext()) != settings.filterUserRules
+    }
+
+    private fun refreshImportedSettingsUi() {
+      findPreference<ListPreference>("volume_behavior")?.value =
+        PreferenceManager.getDefaultSharedPreferences(requireContext()).getString("volume_behavior", "move_page")
+      findPreference<ListPreference>("volume_direction")?.value =
+        PreferenceManager.getDefaultSharedPreferences(requireContext()).getString("volume_direction", "up_prev")
+      findPreference<ListPreference>("swipe_fraction")?.value =
+        PreferenceManager.getDefaultSharedPreferences(requireContext()).getString("swipe_fraction", "0.15")
+      refreshStartPagePref()
+      refreshFilterPrefs()
+      refreshUpdatePrefs()
+    }
+
+    private fun refreshFiltersAfterImport() {
+      lifecycleScope.launch {
+        runCatching {
+          withContext(Dispatchers.IO) {
+            FilterRuntime.getInstance(requireContext()).refreshEngine(force = true)
+          }
+        }
+        refreshFilterPrefs()
+      }
+    }
+
+    private fun createSettingBackupFileName(): String {
+      val timestamp = SimpleDateFormat("yyMMddHHmmss", Locale.US).format(Date())
+      return "np-viewer-setting-$timestamp.json"
+    }
+
+    private fun getCurrentAppVersion(): String = requireContext().packageManager.getPackageInfo(requireContext().packageName, 0).versionName.orEmpty()
 
     // endregion
 
@@ -461,8 +615,7 @@ class SettingsActivity : AppCompatActivity() {
     // region 업데이트
 
     private fun setupVersionPref() {
-      findPreference<Preference>("current_version")?.summary =
-        requireContext().packageManager.getPackageInfo(requireContext().packageName, 0).versionName
+      findPreference<Preference>("current_version")?.summary = getCurrentAppVersion()
     }
 
     private fun setupUpdatePrefs() {
