@@ -12,7 +12,10 @@ import java.io.File
 
 /** 다운로드 완료 이벤트를 수신하여 설치 알림 또는 실패 알림을 표시 */
 class DownloadReceiver : BroadcastReceiver() {
-  override fun onReceive(context: Context, intent: Intent) {
+  override fun onReceive(
+    context: Context,
+    intent: Intent,
+  ) {
     if (intent.action != DownloadManager.ACTION_DOWNLOAD_COMPLETE) return
 
     val completedId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
@@ -44,7 +47,11 @@ class DownloadReceiver : BroadcastReceiver() {
     }
   }
 
-  private fun handleSuccess(context: Context, prefs: android.content.SharedPreferences, localUri: String) {
+  private fun handleSuccess(
+    context: Context,
+    prefs: android.content.SharedPreferences,
+    localUri: String,
+  ) {
     val apkFile = File(localUri.toUri().path!!)
     if (!apkFile.exists()) return
 

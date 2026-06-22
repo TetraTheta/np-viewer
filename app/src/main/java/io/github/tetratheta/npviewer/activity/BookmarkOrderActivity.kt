@@ -52,39 +52,60 @@ class BookmarkOrderActivity : AppCompatActivity() {
     val recyclerView = findViewById<RecyclerView>(R.id.bookmark_order_list)
     recyclerView.adapter = adapter
 
-    ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0) {
-      override fun isLongPressDragEnabled(): Boolean = true
+    ItemTouchHelper(
+      object : ItemTouchHelper.SimpleCallback(ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0) {
+        override fun isLongPressDragEnabled(): Boolean = true
 
-      override fun onMove(
-        recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder
-      ): Boolean {
-        adapter.move(viewHolder.bindingAdapterPosition, target.bindingAdapterPosition)
-        return true
-      }
-
-      override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) = Unit
-
-      override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
-        super.onSelectedChanged(viewHolder, actionState)
-        if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
-          viewHolder?.itemView?.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+        override fun onMove(
+          recyclerView: RecyclerView,
+          viewHolder: RecyclerView.ViewHolder,
+          target: RecyclerView.ViewHolder,
+        ): Boolean {
+          adapter.move(viewHolder.bindingAdapterPosition, target.bindingAdapterPosition)
+          return true
         }
-      }
 
-      override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
-        super.clearView(recyclerView, viewHolder)
-        repository.saveAll(adapter.items)
-      }
-    }).attachToRecyclerView(recyclerView)
+        override fun onSwiped(
+          viewHolder: RecyclerView.ViewHolder,
+          direction: Int,
+        ) = Unit
+
+        override fun onSelectedChanged(
+          viewHolder: RecyclerView.ViewHolder?,
+          actionState: Int,
+        ) {
+          super.onSelectedChanged(viewHolder, actionState)
+          if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
+            viewHolder?.itemView?.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+          }
+        }
+
+        override fun clearView(
+          recyclerView: RecyclerView,
+          viewHolder: RecyclerView.ViewHolder,
+        ) {
+          super.clearView(recyclerView, viewHolder)
+          repository.saveAll(adapter.items)
+        }
+      },
+    ).attachToRecyclerView(recyclerView)
   }
 
-  private class OrderAdapter(val items: MutableList<BookmarkItem>) : RecyclerView.Adapter<OrderAdapter.ViewHolder>() {
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+  private class OrderAdapter(
+    val items: MutableList<BookmarkItem>,
+  ) : RecyclerView.Adapter<OrderAdapter.ViewHolder>() {
+    override fun onCreateViewHolder(
+      parent: ViewGroup,
+      viewType: Int,
+    ): ViewHolder {
       val view = LayoutInflater.from(parent.context).inflate(R.layout.item_bookmark_order, parent, false)
       return ViewHolder(view)
     }
 
-    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+    override fun onBindViewHolder(
+      holder: ViewHolder,
+      position: Int,
+    ) {
       val item = items[position]
       holder.title.text = item.title
       holder.url.text = item.url
@@ -92,7 +113,10 @@ class BookmarkOrderActivity : AppCompatActivity() {
 
     override fun getItemCount(): Int = items.size
 
-    fun move(fromPosition: Int, toPosition: Int) {
+    fun move(
+      fromPosition: Int,
+      toPosition: Int,
+    ) {
       if (fromPosition == RecyclerView.NO_POSITION || toPosition == RecyclerView.NO_POSITION) return
       if (fromPosition < toPosition) {
         for (index in fromPosition until toPosition) {
@@ -106,7 +130,9 @@ class BookmarkOrderActivity : AppCompatActivity() {
       notifyItemMoved(fromPosition, toPosition)
     }
 
-    class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+    class ViewHolder(
+      view: View,
+    ) : RecyclerView.ViewHolder(view) {
       val title: TextView = view.findViewById(R.id.bookmark_order_title)
       val url: TextView = view.findViewById(R.id.bookmark_order_url)
     }

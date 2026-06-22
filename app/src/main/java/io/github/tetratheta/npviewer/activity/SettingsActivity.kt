@@ -77,31 +77,37 @@ class SettingsActivity : AppCompatActivity() {
       private const val TAG = "SettingsBackup"
     }
 
-    private val exportSettingsLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
-      if (uri != null) exportSettings(uri)
-    }
-
-    private val importSettingsLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-      if (uri != null) importSettings(uri)
-    }
-
-    private val notificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-      if (!isAdded) return@registerForActivityResult
-      if (!granted) {
-        if (!shouldShowRequestPermissionRationale(POST_NOTIFICATIONS)) {
-          showGoToSettingsDialog()
-        } else {
-          Toast.makeText(requireContext(), R.string.msg_notification_permission_denied, Toast.LENGTH_LONG).show()
-        }
+    private val exportSettingsLauncher =
+      registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) exportSettings(uri)
       }
-      pendingPermissionAction?.invoke()
-      pendingPermissionAction = null
-    }
+
+    private val importSettingsLauncher =
+      registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) importSettings(uri)
+      }
+
+    private val notificationPermissionLauncher =
+      registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (!isAdded) return@registerForActivityResult
+        if (!granted) {
+          if (!shouldShowRequestPermissionRationale(POST_NOTIFICATIONS)) {
+            showGoToSettingsDialog()
+          } else {
+            Toast.makeText(requireContext(), R.string.msg_notification_permission_denied, Toast.LENGTH_LONG).show()
+          }
+        }
+        pendingPermissionAction?.invoke()
+        pendingPermissionAction = null
+      }
 
     private var pendingUpdateInfo: UpdateInfo? = null
     private var pendingPermissionAction: (() -> Unit)? = null
 
-    override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
+    override fun onCreatePreferences(
+      savedInstanceState: Bundle?,
+      rootKey: String?,
+    ) {
       setPreferencesFromResource(R.xml.root_preferences, rootKey)
       setupStartPagePref()
       setupLinkSettingsPref()
@@ -143,68 +149,86 @@ class SettingsActivity : AppCompatActivity() {
       val context = requireContext()
       val options = getStartPageOptions()
       val selectedUrl = getSelectedStartPageOption().url
-      val container = LinearLayout(context).apply {
-        orientation = LinearLayout.VERTICAL
-        val horizontalPadding = (20 * resources.displayMetrics.density).toInt()
-        val verticalPadding = (8 * resources.displayMetrics.density).toInt()
-        setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
-      }
+      val container =
+        LinearLayout(context).apply {
+          orientation = LinearLayout.VERTICAL
+          val horizontalPadding = (20 * resources.displayMetrics.density).toInt()
+          val verticalPadding = (8 * resources.displayMetrics.density).toInt()
+          setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
+        }
 
       val dialog =
-        AlertDialog.Builder(context).setTitle(R.string.pref_key_start_page).setView(container).setNegativeButton(R.string.btn_cancel, null).create()
+        AlertDialog
+          .Builder(context)
+          .setTitle(R.string.pref_key_start_page)
+          .setView(container)
+          .setNegativeButton(R.string.btn_cancel, null)
+          .create()
 
       options.forEach { option ->
-        val row = createStartPageOptionView(option, option.url == selectedUrl) {
-          PreferenceManager.getDefaultSharedPreferences(context).edit {
-            putString(START_PAGE_KEY, option.url)
+        val row =
+          createStartPageOptionView(option, option.url == selectedUrl) {
+            PreferenceManager.getDefaultSharedPreferences(context).edit {
+              putString(START_PAGE_KEY, option.url)
+            }
+            refreshStartPagePref()
+            dialog.dismiss()
           }
-          refreshStartPagePref()
-          dialog.dismiss()
-        }
         container.addView(row)
       }
 
       dialog.show()
     }
 
-    private fun createStartPageOptionView(option: StartPageOption, checked: Boolean, onClick: () -> Unit): LinearLayout {
+    private fun createStartPageOptionView(
+      option: StartPageOption,
+      checked: Boolean,
+      onClick: () -> Unit,
+    ): LinearLayout {
       val density = resources.displayMetrics.density
       val verticalPadding = (12 * density).toInt()
-      val row = LinearLayout(requireContext()).apply {
-        orientation = LinearLayout.HORIZONTAL
-        setPadding(0, verticalPadding, 0, verticalPadding)
-        isClickable = true
-        isFocusable = true
-        setOnClickListener { onClick() }
-      }
+      val row =
+        LinearLayout(requireContext()).apply {
+          orientation = LinearLayout.HORIZONTAL
+          setPadding(0, verticalPadding, 0, verticalPadding)
+          isClickable = true
+          isFocusable = true
+          setOnClickListener { onClick() }
+        }
 
       row.addView(
         RadioButton(requireContext()).apply {
           isChecked = checked
           isClickable = false
-        })
+        },
+      )
 
-      val textContainer = LinearLayout(requireContext()).apply {
-        orientation = LinearLayout.VERTICAL
-        setPadding((8 * density).toInt(), 0, 0, 0)
-      }
+      val textContainer =
+        LinearLayout(requireContext()).apply {
+          orientation = LinearLayout.VERTICAL
+          setPadding((8 * density).toInt(), 0, 0, 0)
+        }
 
       textContainer.addView(
         TextView(requireContext()).apply {
           text = option.title
           textSize = 16f
-        })
+        },
+      )
       textContainer.addView(
         TextView(requireContext()).apply {
           text = option.url
           textSize = 13f
           alpha = 0.7f
-        })
+        },
+      )
 
       row.addView(
-        textContainer, LinearLayout.LayoutParams(
-          LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-        )
+        textContainer,
+        LinearLayout.LayoutParams(
+          LinearLayout.LayoutParams.MATCH_PARENT,
+          LinearLayout.LayoutParams.WRAP_CONTENT,
+        ),
       )
       return row
     }
@@ -216,13 +240,17 @@ class SettingsActivity : AppCompatActivity() {
       return options.firstOrNull { it.url == selectedUrl } ?: options.first { it.url == START_PAGE_MYBOOK_URL }
     }
 
-    private fun getStartPageOptions(): List<StartPageOption> = listOf(
-      StartPageOption(getString(R.string.start_page_home_title), START_PAGE_HOME_URL),
-      StartPageOption(getString(R.string.start_page_mybook_title), START_PAGE_MYBOOK_URL),
-      StartPageOption(getString(R.string.start_page_last_view_title), START_PAGE_LAST_VIEW_URL)
-    )
+    private fun getStartPageOptions(): List<StartPageOption> =
+      listOf(
+        StartPageOption(getString(R.string.start_page_home_title), START_PAGE_HOME_URL),
+        StartPageOption(getString(R.string.start_page_mybook_title), START_PAGE_MYBOOK_URL),
+        StartPageOption(getString(R.string.start_page_last_view_title), START_PAGE_LAST_VIEW_URL),
+      )
 
-    private data class StartPageOption(val title: String, val url: String)
+    private data class StartPageOption(
+      val title: String,
+      val url: String,
+    )
 
     // endregion
 
@@ -239,19 +267,24 @@ class SettingsActivity : AppCompatActivity() {
       val pref = findPreference<Preference>("open_link_settings") ?: return
       val approved = isLinkApproved()
       pref.isEnabled = !approved
-      pref.summary = getString(
-        if (approved) R.string.pref_desc_open_link_settings_enabled
-        else R.string.pref_desc_open_link_settings_disabled
-      )
+      pref.summary =
+        getString(
+          if (approved) {
+            R.string.pref_desc_open_link_settings_enabled
+          } else {
+            R.string.pref_desc_open_link_settings_disabled
+          },
+        )
     }
 
-    private fun isLinkApproved(): Boolean = try {
-      val manager = requireContext().getSystemService(DomainVerificationManager::class.java)
-      val state = manager.getDomainVerificationUserState(requireContext().packageName)?.hostToStateMap?.get("novelpia.com")
-      state == DomainVerificationUserState.DOMAIN_STATE_SELECTED || state == DomainVerificationUserState.DOMAIN_STATE_VERIFIED
-    } catch (_: Exception) {
-      false
-    }
+    private fun isLinkApproved(): Boolean =
+      try {
+        val manager = requireContext().getSystemService(DomainVerificationManager::class.java)
+        val state = manager.getDomainVerificationUserState(requireContext().packageName)?.hostToStateMap?.get("novelpia.com")
+        state == DomainVerificationUserState.DOMAIN_STATE_SELECTED || state == DomainVerificationUserState.DOMAIN_STATE_VERIFIED
+      } catch (_: Exception) {
+        false
+      }
 
     // endregion
 
@@ -281,7 +314,8 @@ class SettingsActivity : AppCompatActivity() {
 
       findPreference<Preference>(FilterPreferences.KEY_USER_RULES)?.setOnPreferenceClickListener {
         showMultilineEditor(
-          title = getString(R.string.title_filters_user_rules), initialValue = FilterPreferences.getUserRuleEditorText(requireContext())
+          title = getString(R.string.title_filters_user_rules),
+          initialValue = FilterPreferences.getUserRuleEditorText(requireContext()),
         ) { value ->
           FilterPreferences.setUserRulesEditorText(requireContext(), value)
           lifecycleScope.launch {
@@ -299,18 +333,22 @@ class SettingsActivity : AppCompatActivity() {
 
       findPreference<Preference>("filters_update_now")?.setOnPreferenceClickListener {
         lifecycleScope.launch {
-          val summary = withContext(Dispatchers.IO) {
-            FilterRuntime.getInstance(requireContext()).updateSubscriptions(force = true)
-          }
+          val summary =
+            withContext(Dispatchers.IO) {
+              FilterRuntime.getInstance(requireContext()).updateSubscriptions(force = true)
+            }
           runCatching {
             withContext(Dispatchers.IO) {
               FilterRuntime.getInstance(requireContext()).refreshEngine(force = true)
             }
           }
           refreshFilterPrefs()
-          Toast.makeText(
-            requireContext(), if (summary.failedCount == 0) R.string.msg_filters_updated else R.string.msg_filters_update_failed, Toast.LENGTH_SHORT
-          ).show()
+          Toast
+            .makeText(
+              requireContext(),
+              if (summary.failedCount == 0) R.string.msg_filters_updated else R.string.msg_filters_update_failed,
+              Toast.LENGTH_SHORT,
+            ).show()
         }
         true
       }
@@ -323,26 +361,29 @@ class SettingsActivity : AppCompatActivity() {
       val lastUpdated = FilterPreferences.getLastUpdatedAt(context)
       val lastError = FilterPreferences.getLastUpdateError(context)
 
-      findPreference<Preference>(FilterPreferences.KEY_SUBSCRIPTIONS)?.summary = buildString {
-        append(getString(R.string.pref_desc_filters_subscriptions))
-        append("\n")
-        append(if (urls.isEmpty()) "0 URL" else "${urls.size} URL")
-      }
+      findPreference<Preference>(FilterPreferences.KEY_SUBSCRIPTIONS)?.summary =
+        buildString {
+          append(getString(R.string.pref_desc_filters_subscriptions))
+          append("\n")
+          append(if (urls.isEmpty()) "0 URL" else "${urls.size} URL")
+        }
 
-      findPreference<Preference>(FilterPreferences.KEY_USER_RULES)?.summary = buildString {
-        append(getString(R.string.pref_desc_filters_user_rules))
-        append("\n")
-        append(if (userRules.isEmpty()) "0 rules" else "${userRules.size} rules")
-      }
+      findPreference<Preference>(FilterPreferences.KEY_USER_RULES)?.summary =
+        buildString {
+          append(getString(R.string.pref_desc_filters_user_rules))
+          append("\n")
+          append(if (userRules.isEmpty()) "0 rules" else "${userRules.size} rules")
+        }
 
-      findPreference<Preference>("filters_update_now")?.summary = when {
-        lastError != null -> "${getString(R.string.pref_desc_filters_update_now)}\n$lastError"
-        lastUpdated > 0L -> "${getString(R.string.pref_desc_filters_update_now)}\n${
-          java.text.DateFormat.getDateTimeInstance().format(Date(lastUpdated))
-        }"
+      findPreference<Preference>("filters_update_now")?.summary =
+        when {
+          lastError != null -> "${getString(R.string.pref_desc_filters_update_now)}\n$lastError"
+          lastUpdated > 0L -> "${getString(R.string.pref_desc_filters_update_now)}\n${
+            java.text.DateFormat.getDateTimeInstance().format(Date(lastUpdated))
+          }"
 
-        else -> getString(R.string.pref_desc_filters_update_now)
-      }
+          else -> getString(R.string.pref_desc_filters_update_now)
+        }
     }
 
     private fun showSubscriptionEditor() {
@@ -350,7 +391,8 @@ class SettingsActivity : AppCompatActivity() {
         title = getString(R.string.title_filters_subscriptions),
         initialValue = FilterPreferences.getSubscriptionEditorText(requireContext()),
         neutralButtonText = getString(R.string.btn_reset),
-        onNeutralClick = { showResetSubscriptionConfirmation() }) { value ->
+        onNeutralClick = { showResetSubscriptionConfirmation() },
+      ) { value ->
         FilterPreferences.setSubscriptionEditorText(requireContext(), value)
         refreshFiltersAfterSubscriptionChange()
         Toast.makeText(requireContext(), R.string.msg_filters_saved, Toast.LENGTH_SHORT).show()
@@ -358,12 +400,16 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun showResetSubscriptionConfirmation() {
-      AlertDialog.Builder(requireContext()).setTitle(R.string.title_reset_filter_subscriptions)
-        .setMessage(R.string.msg_reset_filter_subscriptions_warning).setPositiveButton(R.string.btn_reset) { _, _ ->
+      AlertDialog
+        .Builder(requireContext())
+        .setTitle(R.string.title_reset_filter_subscriptions)
+        .setMessage(R.string.msg_reset_filter_subscriptions_warning)
+        .setPositiveButton(R.string.btn_reset) { _, _ ->
           FilterPreferences.resetSubscriptionUrls(requireContext())
           refreshFiltersAfterSubscriptionChange()
           Toast.makeText(requireContext(), R.string.msg_filter_subscriptions_reset, Toast.LENGTH_SHORT).show()
-        }.setNegativeButton(R.string.btn_cancel, null).show()
+        }.setNegativeButton(R.string.btn_cancel, null)
+        .show()
     }
 
     private fun refreshFiltersAfterSubscriptionChange() {
@@ -379,26 +425,39 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun showMultilineEditor(
-      title: String, initialValue: String, neutralButtonText: String? = null, onNeutralClick: (() -> Unit)? = null, onSave: (String) -> Unit
+      title: String,
+      initialValue: String,
+      neutralButtonText: String? = null,
+      onNeutralClick: (() -> Unit)? = null,
+      onSave: (String) -> Unit,
     ) {
-      val editText = EditText(requireContext()).apply {
-        setText(initialValue)
-        minLines = 8
-        gravity = android.view.Gravity.TOP or android.view.Gravity.START
-        inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-      }
-      val container = LinearLayout(requireContext()).apply {
-        val padding = (24 * resources.displayMetrics.density).toInt()
-        setPadding(padding, padding / 2, padding, 0)
-        addView(
-          editText, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+      val editText =
+        EditText(requireContext()).apply {
+          setText(initialValue)
+          minLines = 8
+          gravity = android.view.Gravity.TOP or android.view.Gravity.START
+          inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+        }
+      val container =
+        LinearLayout(requireContext()).apply {
+          val padding = (24 * resources.displayMetrics.density).toInt()
+          setPadding(padding, padding / 2, padding, 0)
+          addView(
+            editText,
+            LinearLayout.LayoutParams(
+              LinearLayout.LayoutParams.MATCH_PARENT,
+              LinearLayout.LayoutParams.WRAP_CONTENT,
+            ),
           )
-        )
-      }
+        }
 
-      val builder = AlertDialog.Builder(requireContext()).setTitle(title).setView(container)
-        .setPositiveButton(android.R.string.ok) { _, _ -> onSave(editText.text.toString()) }.setNegativeButton(R.string.btn_cancel, null)
+      val builder =
+        AlertDialog
+          .Builder(requireContext())
+          .setTitle(title)
+          .setView(container)
+          .setPositiveButton(android.R.string.ok) { _, _ -> onSave(editText.text.toString()) }
+          .setNegativeButton(R.string.btn_cancel, null)
       if (neutralButtonText != null && onNeutralClick != null) {
         builder.setNeutralButton(neutralButtonText) { _, _ -> onNeutralClick() }
       }
@@ -425,9 +484,13 @@ class SettingsActivity : AppCompatActivity() {
       runCatching {
         val context = requireContext()
         val exportedAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.US).format(Date())
-        val json = SettingBackupCodec.export(
-          context = context, appVersion = getCurrentAppVersion(), exportedAt = exportedAt, bookmarks = BookmarkRepository(context).getAll()
-        )
+        val json =
+          SettingBackupCodec.export(
+            context = context,
+            appVersion = getCurrentAppVersion(),
+            exportedAt = exportedAt,
+            bookmarks = BookmarkRepository(context).getAll(),
+          )
         context.contentResolver.openOutputStream(uri)?.use { output ->
           OutputStreamWriter(output, Charsets.UTF_8).use { writer ->
             writer.write(json)
@@ -442,8 +505,13 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun importSettings(uri: Uri) {
       runCatching {
-        val json = requireContext().contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
-          ?: error("Input stream is null")
+        val json =
+          requireContext()
+            .contentResolver
+            .openInputStream(uri)
+            ?.bufferedReader(Charsets.UTF_8)
+            ?.use { it.readText() }
+            ?: error("Input stream is null")
         Log.i(TAG, "Loaded settings backup file: $uri")
         SettingBackupCodec.parse(json)
       }.onSuccess { backup ->
@@ -477,9 +545,15 @@ class SettingsActivity : AppCompatActivity() {
       }
     }
 
-    private fun showBookmarkOverwriteDialog(repository: BookmarkRepository, backup: SettingBackup) {
-      AlertDialog.Builder(requireContext()).setTitle(R.string.title_import_settings_bookmark_overwrite)
-        .setMessage(R.string.msg_import_settings_bookmark_overwrite).setPositiveButton(R.string.btn_overwrite) { _, _ ->
+    private fun showBookmarkOverwriteDialog(
+      repository: BookmarkRepository,
+      backup: SettingBackup,
+    ) {
+      AlertDialog
+        .Builder(requireContext())
+        .setTitle(R.string.title_import_settings_bookmark_overwrite)
+        .setMessage(R.string.msg_import_settings_bookmark_overwrite)
+        .setPositiveButton(R.string.btn_overwrite) { _, _ ->
           repository.saveAll(backup.bookmarks)
           Toast.makeText(requireContext(), R.string.msg_settings_imported, Toast.LENGTH_SHORT).show()
         }.setNegativeButton(R.string.btn_skip) { _, _ ->
@@ -503,10 +577,13 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun shouldRefreshFiltersAfterImport(settings: BackupSettings): Boolean {
       val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
-      return prefs.getBoolean(FilterPreferences.KEY_ENABLED, true) != settings.filtersEnabled || prefs.getBoolean(
-        FilterPreferences.KEY_AUTO_UPDATE, true
-      ) != settings.filtersAutoUpdate || FilterPreferences.getSubscriptionUrls(requireContext()) != settings.filterSubscriptions ||
-          FilterPreferences.getUserRuleLines(requireContext()) != settings.filterUserRules
+      return prefs.getBoolean(FilterPreferences.KEY_ENABLED, true) != settings.filtersEnabled ||
+        prefs.getBoolean(
+          FilterPreferences.KEY_AUTO_UPDATE,
+          true,
+        ) != settings.filtersAutoUpdate ||
+        FilterPreferences.getSubscriptionUrls(requireContext()) != settings.filterSubscriptions ||
+        FilterPreferences.getUserRuleLines(requireContext()) != settings.filterUserRules
     }
 
     private fun refreshImportedSettingsUi() {
@@ -537,7 +614,12 @@ class SettingsActivity : AppCompatActivity() {
       return "np-viewer-setting-$timestamp.json"
     }
 
-    private fun getCurrentAppVersion(): String = requireContext().packageManager.getPackageInfo(requireContext().packageName, 0).versionName.orEmpty()
+    private fun getCurrentAppVersion(): String =
+      requireContext()
+        .packageManager
+        .getPackageInfo(requireContext().packageName, 0)
+        .versionName
+        .orEmpty()
 
     // endregion
 
@@ -561,12 +643,19 @@ class SettingsActivity : AppCompatActivity() {
       }
 
       findPreference<Preference>("clear_cookie")?.setOnPreferenceClickListener {
-        AlertDialog.Builder(requireContext()).setTitle(R.string.title_clear_cookie).setMessage(R.string.msg_clear_cookie_warning)
+        AlertDialog
+          .Builder(requireContext())
+          .setTitle(R.string.title_clear_cookie)
+          .setMessage(R.string.msg_clear_cookie_warning)
           .setPositiveButton(R.string.btn_delete) { _, _ ->
-            CookieManager.getInstance().apply { removeAllCookies(null); flush() }
+            CookieManager.getInstance().apply {
+              removeAllCookies(null)
+              flush()
+            }
             Toast.makeText(context, R.string.msg_clear_cookie, Toast.LENGTH_SHORT).show()
             findPreference<Preference>("clear_cookie")?.summary = "${getString(R.string.pref_desc_clear_cookie)}\n0 B"
-          }.setNegativeButton(R.string.btn_cancel, null).show()
+          }.setNegativeButton(R.string.btn_cancel, null)
+          .show()
         true
       }
     }
@@ -580,35 +669,43 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private suspend fun refreshCacheSummary() {
-      val size = withContext(Dispatchers.IO) {
-        requireContext().cacheDir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
-      }
+      val size =
+        withContext(Dispatchers.IO) {
+          requireContext()
+            .cacheDir
+            .walkTopDown()
+            .filter { it.isFile }
+            .sumOf { it.length() }
+        }
       findPreference<Preference>("clear_cache")?.summary = "${getString(R.string.pref_desc_clear_cache)}\n${formatSize(size)}"
     }
 
     private suspend fun refreshWebStorageSummary() {
-      val size = suspendCancellableCoroutine { cont ->
-        WebStorage.getInstance().getOrigins { origins ->
-          cont.resume(origins?.values?.filterIsInstance<WebStorage.Origin>()?.sumOf { it.usage } ?: 0L)
+      val size =
+        suspendCancellableCoroutine { cont ->
+          WebStorage.getInstance().getOrigins { origins ->
+            cont.resume(origins?.values?.filterIsInstance<WebStorage.Origin>()?.sumOf { it.usage } ?: 0L)
+          }
         }
-      }
       findPreference<Preference>("clear_webstorage")?.summary = "${getString(R.string.pref_desc_clear_webstorage)}\n${formatSize(size)}"
     }
 
     private suspend fun refreshCookieSummary() {
-      val size = withContext(Dispatchers.IO) {
-        val cookieFile = File(requireContext().dataDir, "app_webview/Default/Cookies")
-        if (cookieFile.exists()) cookieFile.length() else 0L
-      }
+      val size =
+        withContext(Dispatchers.IO) {
+          val cookieFile = File(requireContext().dataDir, "app_webview/Default/Cookies")
+          if (cookieFile.exists()) cookieFile.length() else 0L
+        }
       findPreference<Preference>("clear_cookie")?.summary = "${getString(R.string.pref_desc_clear_cookie)}\n${formatSize(size)}"
     }
 
-    private fun formatSize(bytes: Long): String = when {
-      bytes <= 0L -> "0 B"
-      bytes < 1_024L -> "$bytes B"
-      bytes < 1_048_576L -> "${bytes / 1_024} KB"
-      else -> "%.1f MB".format(bytes / 1_048_576.0)
-    }
+    private fun formatSize(bytes: Long): String =
+      when {
+        bytes <= 0L -> "0 B"
+        bytes < 1_024L -> "$bytes B"
+        bytes < 1_048_576L -> "${bytes / 1_024} KB"
+        else -> "%.1f MB".format(bytes / 1_048_576.0)
+      }
 
     // endregion
 
@@ -704,15 +801,19 @@ class SettingsActivity : AppCompatActivity() {
       findPreference<Preference>("download_update")?.isEnabled = false
     }
 
-    private fun applyUpdateResult(info: UpdateInfo?, isError: Boolean = false) {
+    private fun applyUpdateResult(
+      info: UpdateInfo?,
+      isError: Boolean = false,
+    ) {
       val checkPref = findPreference<Preference>("check_update") ?: return
       val downloadPref = findPreference<Preference>("download_update") ?: return
       checkPref.isEnabled = true
-      checkPref.summary = when {
-        info != null -> getString(R.string.pref_desc_check_update_available, info.version)
-        isError -> getString(R.string.pref_desc_check_update_error)
-        else -> getString(R.string.pref_desc_check_update_latest)
-      }
+      checkPref.summary =
+        when {
+          info != null -> getString(R.string.pref_desc_check_update_available, info.version)
+          isError -> getString(R.string.pref_desc_check_update_error)
+          else -> getString(R.string.pref_desc_check_update_latest)
+        }
       downloadPref.title = getString(R.string.pref_key_download_update)
       downloadPref.summary = null
       downloadPref.isEnabled = info != null
@@ -757,8 +858,10 @@ class SettingsActivity : AppCompatActivity() {
 
     /** POST_NOTIFICATIONS 권한을 확인하고 필요 시 요청한 후 [action] 실행 */
     private fun requestNotificationPermissionThen(action: () -> Unit) {
-      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || ContextCompat.checkSelfPermission(
-          requireContext(), POST_NOTIFICATIONS
+      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+        ContextCompat.checkSelfPermission(
+          requireContext(),
+          POST_NOTIFICATIONS,
         ) == PackageManager.PERMISSION_GRANTED
       ) {
         action()
@@ -769,8 +872,11 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun showNotificationRationaleDialog() {
-      AlertDialog.Builder(requireContext()).setTitle(R.string.dlg_notification_permission_title)
-        .setMessage(R.string.dlg_notification_permission_message).setPositiveButton(R.string.btn_allow) { _, _ ->
+      AlertDialog
+        .Builder(requireContext())
+        .setTitle(R.string.dlg_notification_permission_title)
+        .setMessage(R.string.dlg_notification_permission_message)
+        .setPositiveButton(R.string.btn_allow) { _, _ ->
           notificationPermissionLauncher.launch(POST_NOTIFICATIONS)
         }.setNegativeButton(R.string.btn_skip) { _, _ ->
           pendingPermissionAction?.invoke()
@@ -779,12 +885,18 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun showGoToSettingsDialog() {
-      AlertDialog.Builder(requireContext()).setTitle(R.string.dlg_notification_settings_title).setMessage(R.string.dlg_notification_settings_message)
+      AlertDialog
+        .Builder(requireContext())
+        .setTitle(R.string.dlg_notification_settings_title)
+        .setMessage(R.string.dlg_notification_settings_message)
         .setPositiveButton(R.string.btn_go_to_settings) { _, _ ->
-          startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-            data = Uri.fromParts("package", requireContext().packageName, null)
-          })
-        }.setNegativeButton(R.string.btn_cancel, null).show()
+          startActivity(
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+              data = Uri.fromParts("package", requireContext().packageName, null)
+            },
+          )
+        }.setNegativeButton(R.string.btn_cancel, null)
+        .show()
     }
 
     // endregion

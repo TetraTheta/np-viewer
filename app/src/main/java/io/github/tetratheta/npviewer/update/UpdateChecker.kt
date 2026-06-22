@@ -41,38 +41,43 @@ object UpdateChecker {
   // region 네트워크
 
   /** GitHub에서 최신 릴리스 정보를 가져와 현재 버전과 비교 */
-  suspend fun fetchLatest(context: Context): UpdateResult = withContext(Dispatchers.IO) {
-    try {
-      val conn = (URL(API_URL).openConnection() as HttpURLConnection).apply {
-        requestMethod = "GET"
-        setRequestProperty("Accept", "application/vnd.github+json")
-        connectTimeout = 10_000
-        readTimeout = 10_000
-      }
+  suspend fun fetchLatest(context: Context): UpdateResult =
+    withContext(Dispatchers.IO) {
+      try {
+        val conn =
+          (URL(API_URL).openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            setRequestProperty("Accept", "application/vnd.github+json")
+            connectTimeout = 10_000
+            readTimeout = 10_000
+          }
 
-      if (conn.responseCode != 200) {
+        if (conn.responseCode != 200) {
+          conn.disconnect()
+          return@withContext UpdateResult.Error
+        }
+
+        val json = JSONObject(conn.inputStream.bufferedReader().readText())
         conn.disconnect()
-        return@withContext UpdateResult.Error
+
+        val tagName = json.getString("tag_name").removePrefix("v")
+        val currentVersion = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: return@withContext UpdateResult.Error
+
+        if (!isNewer(tagName, currentVersion)) return@withContext UpdateResult.UpToDate
+
+        val downloadUrl =
+          json.getJSONArray("assets").let { assets ->
+            (0 until assets.length())
+              .map { assets.getJSONObject(it) }
+              .firstOrNull { it.getString("name").endsWith(".apk") }
+              ?.getString("browser_download_url")
+          } ?: return@withContext UpdateResult.Error
+
+        UpdateResult.Available(UpdateInfo(tagName, downloadUrl))
+      } catch (_: Exception) {
+        UpdateResult.Error
       }
-
-      val json = JSONObject(conn.inputStream.bufferedReader().readText())
-      conn.disconnect()
-
-      val tagName = json.getString("tag_name").removePrefix("v")
-      val currentVersion = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: return@withContext UpdateResult.Error
-
-      if (!isNewer(tagName, currentVersion)) return@withContext UpdateResult.UpToDate
-
-      val downloadUrl = json.getJSONArray("assets").let { assets ->
-        (0 until assets.length()).map { assets.getJSONObject(it) }.firstOrNull { it.getString("name").endsWith(".apk") }
-          ?.getString("browser_download_url")
-      } ?: return@withContext UpdateResult.Error
-
-      UpdateResult.Available(UpdateInfo(tagName, downloadUrl))
-    } catch (_: Exception) {
-      UpdateResult.Error
     }
-  }
 
   /** 최신 릴리스 확인 후 업데이트가 있으면 알림 표시 */
   suspend fun checkAndNotify(context: Context) {
@@ -99,7 +104,10 @@ object UpdateChecker {
     return UpdateInfo(version, url)
   }
 
-  fun saveCache(context: Context, result: UpdateResult) {
+  fun saveCache(
+    context: Context,
+    result: UpdateResult,
+  ) {
     prefs(context).edit {
       putLong(KEY_CACHE_TIMESTAMP, System.currentTimeMillis())
       when (result) {
@@ -124,15 +132,20 @@ object UpdateChecker {
   // region 다운로드
 
   /** DownloadManager를 통해 APK 다운로드 시작. 성공 시 다운로드 ID, 실패 시 -1 반환 */
-  fun enqueueDownload(context: Context, downloadUrl: String, version: String): Long {
-    val request = DownloadManager.Request(downloadUrl.toUri()).apply {
-      setTitle(context.getString(R.string.noti_download_title))
-      setDescription(context.getString(R.string.noti_download_desc, version))
-      setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
-      setAllowedOverMetered(true)
-      setAllowedOverRoaming(true)
-      setDestinationInExternalFilesDir(context, null, "np-viewer-$version.apk")
-    }
+  fun enqueueDownload(
+    context: Context,
+    downloadUrl: String,
+    version: String,
+  ): Long {
+    val request =
+      DownloadManager.Request(downloadUrl.toUri()).apply {
+        setTitle(context.getString(R.string.noti_download_title))
+        setDescription(context.getString(R.string.noti_download_desc, version))
+        setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
+        setAllowedOverMetered(true)
+        setAllowedOverRoaming(true)
+        setDestinationInExternalFilesDir(context, null, "np-viewer-$version.apk")
+      }
     return try {
       val dm = context.getSystemService(DownloadManager::class.java)
       val downloadId = dm.enqueue(request)
@@ -151,11 +164,13 @@ object UpdateChecker {
 
     val dm = context.getSystemService(DownloadManager::class.java)
     val cursor = dm.query(DownloadManager.Query().setFilterById(downloadId)) ?: return false
-    val active = cursor.use {
-      it.moveToFirst() && it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)).let { status ->
-        status == DownloadManager.STATUS_RUNNING || status == DownloadManager.STATUS_PENDING
+    val active =
+      cursor.use {
+        it.moveToFirst() &&
+          it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)).let { status ->
+            status == DownloadManager.STATUS_RUNNING || status == DownloadManager.STATUS_PENDING
+          }
       }
-    }
 
     // 완료됐거나 존재하지 않는 다운로드 — 상태 정리
     if (!active) prefs.edit { remove(KEY_DOWNLOAD_ID) }
@@ -177,7 +192,10 @@ object UpdateChecker {
   // region 설치
 
   /** APK 설치를 위한 ACTION_VIEW Intent 생성 */
-  fun createInstallIntent(context: Context, apkFile: File): Intent {
+  fun createInstallIntent(
+    context: Context,
+    apkFile: File,
+  ): Intent {
     val apkUri = FileProvider.getUriForFile(context, "${context.packageName}.provider", apkFile)
     return Intent(Intent.ACTION_VIEW).apply {
       setDataAndType(apkUri, "application/vnd.android.package-archive")
@@ -211,22 +229,24 @@ object UpdateChecker {
   fun purgeInstalledApk(context: Context) {
     val prefs = prefs(context)
     val apkVersion = prefs.getString(KEY_APK_VERSION, null) ?: return
-    val currentVersion = try {
-      context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: return
-    } catch (_: Exception) {
-      return
-    }
+    val currentVersion =
+      try {
+        context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: return
+      } catch (_: Exception) {
+        return
+      }
     if (!isNewer(apkVersion, currentVersion)) cleanupApk(context)
   }
 
   /** 앱 업데이트 후 이전 다운로드 상태 전부 정리 */
   fun processAppUpdate(context: Context) {
     val prefs = prefs(context)
-    val currentVersion = try {
-      context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: return
-    } catch (_: Exception) {
-      return
-    }
+    val currentVersion =
+      try {
+        context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: return
+      } catch (_: Exception) {
+        return
+      }
     val lastVersion = prefs.getString(KEY_LAST_VERSION, null)
     if (lastVersion != null && isNewer(currentVersion, lastVersion)) {
       cleanupApk(context)
@@ -246,7 +266,10 @@ object UpdateChecker {
   // region 버전 비교
 
   /** remote가 current보다 새 버전인지 비교 (semantic versioning) */
-  fun isNewer(remote: String, current: String): Boolean {
+  fun isNewer(
+    remote: String,
+    current: String,
+  ): Boolean {
     val r = remote.split(".").mapNotNull { it.toIntOrNull() }
     val c = current.split(".").mapNotNull { it.toIntOrNull() }
     for (i in 0 until maxOf(r.size, c.size)) {

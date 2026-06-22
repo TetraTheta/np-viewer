@@ -12,7 +12,10 @@ class UpdateDownloadReceiver : BroadcastReceiver() {
     const val EXTRA_VERSION = "extra_version"
   }
 
-  override fun onReceive(context: Context, intent: Intent) {
+  override fun onReceive(
+    context: Context,
+    intent: Intent,
+  ) {
     val downloadUrl = intent.getStringExtra(EXTRA_DOWNLOAD_URL) ?: return
     val version = intent.getStringExtra(EXTRA_VERSION) ?: return
 

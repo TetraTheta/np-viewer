@@ -7,23 +7,27 @@ import java.util.UUID
 object BookmarkHtmlCodec {
   private val linkPattern = Regex("""<a\s+[^>]*href\s*=\s*(["'])(.*?)\1[^>]*>(.*?)</a>""", RegexOption.IGNORE_CASE)
 
-  fun export(items: List<BookmarkItem>): String = buildString {
-    appendLine("<!DOCTYPE NETSCAPE-Bookmark-file-1>")
-    appendLine("<META HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html; charset=UTF-8\">")
-    appendLine("<TITLE>Bookmarks</TITLE>")
-    appendLine("<H1>Bookmarks</H1>")
-    appendLine("<DL><p>")
-    items.forEach { item ->
-      append("  <DT><A HREF=\"")
-      append(escapeHtml(item.url))
-      append("\">")
-      append(escapeHtml(item.title))
-      appendLine("</A>")
+  fun export(items: List<BookmarkItem>): String =
+    buildString {
+      appendLine("<!DOCTYPE NETSCAPE-Bookmark-file-1>")
+      appendLine("<META HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html; charset=UTF-8\">")
+      appendLine("<TITLE>Bookmarks</TITLE>")
+      appendLine("<H1>Bookmarks</H1>")
+      appendLine("<DL><p>")
+      items.forEach { item ->
+        append("  <DT><A HREF=\"")
+        append(escapeHtml(item.url))
+        append("\">")
+        append(escapeHtml(item.title))
+        appendLine("</A>")
+      }
+      appendLine("</DL><p>")
     }
-    appendLine("</DL><p>")
-  }
 
-  fun import(html: String, existingUrls: Set<String>): ImportResult {
+  fun import(
+    html: String,
+    existingUrls: Set<String>,
+  ): ImportResult {
     val imported = mutableListOf<BookmarkItem>()
     val knownUrls = existingUrls.toMutableSet()
     var skipped = 0
@@ -49,4 +53,7 @@ object BookmarkHtmlCodec {
   private fun decodeHtml(value: String): String = Html.fromHtml(value, Html.FROM_HTML_MODE_LEGACY).toString().trim()
 }
 
-data class ImportResult(val items: List<BookmarkItem>, val skippedCount: Int)
+data class ImportResult(
+  val items: List<BookmarkItem>,
+  val skippedCount: Int,
+)

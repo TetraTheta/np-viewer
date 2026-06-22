@@ -7,7 +7,7 @@ private const val TYPE_OTHER = 4096
 class NetworkFilterEngine private constructor(
   private val hostAnchoredRules: Map<String, List<CompiledNetworkRule>>,
   private val tokenIndexedRules: Map<String, List<CompiledNetworkRule>>,
-  private val fallbackRules: List<CompiledNetworkRule>
+  private val fallbackRules: List<CompiledNetworkRule>,
 ) {
   private val resultCache = ConcurrentHashMap<NetworkRequestKey, Boolean>()
 
@@ -33,7 +33,10 @@ class NetworkFilterEngine private constructor(
     return blocked
   }
 
-  private fun addHostCandidates(target: LinkedHashSet<CompiledNetworkRule>, host: String) {
+  private fun addHostCandidates(
+    target: LinkedHashSet<CompiledNetworkRule>,
+    host: String,
+  ) {
     if (host.isBlank()) return
     var offset = 0
     while (offset < host.length) {
@@ -54,14 +57,20 @@ class NetworkFilterEngine private constructor(
     return tokens
   }
 
-  private fun addLookupTokens(target: MutableSet<String>, value: String) {
+  private fun addLookupTokens(
+    target: MutableSet<String>,
+    value: String,
+  ) {
     TOKEN_REGEX.findAll(value.lowercase()).forEach { match ->
       val token = match.value
       if (token.length >= 3) target += token
     }
   }
 
-  private fun addHostTokens(target: MutableSet<String>, host: String) {
+  private fun addHostTokens(
+    target: MutableSet<String>,
+    host: String,
+  ) {
     host.split('.').filter { it.length >= 3 }.forEach(target::add)
   }
 
@@ -88,14 +97,16 @@ class NetworkFilterEngine private constructor(
       return NetworkFilterEngine(
         hostAnchoredRules = hostRules.mapValues { it.value.toList() },
         tokenIndexedRules = tokenRules.mapValues { it.value.toList() },
-        fallbackRules = fallbackRules.toList()
+        fallbackRules = fallbackRules.toList(),
       )
     }
   }
 }
 
 private data class NetworkRequestKey(
-  val url: String, val sourceUrl: String?, val requestType: Int
+  val url: String,
+  val sourceUrl: String?,
+  val requestType: Int,
 )
 
 data class CompiledNetworkRule(
@@ -105,7 +116,7 @@ data class CompiledNetworkRule(
   val lookupToken: String?,
   val includedRequestTypes: Set<Int>,
   val excludedRequestTypes: Set<Int>,
-  val scope: DomainRuleScope
+  val scope: DomainRuleScope,
 ) {
   fun matches(request: FilterRequest): Boolean {
     if (includedRequestTypes.isNotEmpty() && request.requestType !in includedRequestTypes) return false
@@ -120,18 +131,19 @@ object NetworkRuleParser {
   private val OPTION_SEPARATOR = Regex(",(?=(?:[^|]*\\|[^|]*|[^|]*)*$)")
   private val META_CHARS = setOf('*', '^', '|')
   private val REGEX_SPECIALS = setOf('.', '+', '?', '(', ')', '[', ']', '{', '}', '\\')
-  private val SUPPORTED_TYPES = mapOf(
-    "document" to 1,
-    "subdocument" to 2,
-    "script" to 4,
-    "stylesheet" to 8,
-    "object" to 16,
-    "image" to 32,
-    "xmlhttprequest" to 64,
-    "media" to 128,
-    "font" to 256,
-    "other" to TYPE_OTHER
-  )
+  private val SUPPORTED_TYPES =
+    mapOf(
+      "document" to 1,
+      "subdocument" to 2,
+      "script" to 4,
+      "stylesheet" to 8,
+      "object" to 16,
+      "image" to 32,
+      "xmlhttprequest" to 64,
+      "media" to 128,
+      "font" to 256,
+      "other" to TYPE_OTHER,
+    )
 
   fun parse(line: String): CompiledNetworkRule? {
     val trimmed = line.trim()
@@ -154,7 +166,7 @@ object NetworkRuleParser {
       lookupToken = extractLookupToken(patternAndOptions.pattern),
       includedRequestTypes = requestTypes.first,
       excludedRequestTypes = requestTypes.second,
-      scope = scope
+      scope = scope,
     )
   }
 
@@ -210,8 +222,11 @@ object NetworkRuleParser {
     val startAnchored = !domainAnchored && body.startsWith("|")
     val endAnchored = body.endsWith("|")
 
-    if (domainAnchored) body = body.removePrefix("||")
-    else if (startAnchored) body = body.removePrefix("|")
+    if (domainAnchored) {
+      body = body.removePrefix("||")
+    } else if (startAnchored) {
+      body = body.removePrefix("|")
+    }
     if (endAnchored) body = body.dropLast(1)
     if (body.isBlank()) return null
 
@@ -239,22 +254,29 @@ object NetworkRuleParser {
 
   private fun extractHostAnchor(pattern: String): String? {
     if (!pattern.startsWith("||")) return null
-    val host = buildString {
-      pattern.removePrefix("||").forEach { ch ->
-        if (ch == '/' || ch in META_CHARS) return@buildString
-        append(ch.lowercaseChar())
+    val host =
+      buildString {
+        pattern.removePrefix("||").forEach { ch ->
+          if (ch == '/' || ch in META_CHARS) return@buildString
+          append(ch.lowercaseChar())
+        }
       }
-    }
     return host.ifBlank { null }
   }
 
   private fun extractLookupToken(pattern: String): String? {
-    val normalized = pattern.removePrefix("||").removePrefix("|").removeSuffix("|").lowercase()
+    val normalized =
+      pattern
+        .removePrefix("||")
+        .removePrefix("|")
+        .removeSuffix("|")
+        .lowercase()
     val candidates = normalized.split('*', '^', '/', '.', '?', '&', '=', '-', '_', ':').filter { it.length >= 3 }
     return candidates.maxByOrNull { it.length }
   }
 
   private data class PatternAndOptions(
-    val pattern: String, val options: List<String>
+    val pattern: String,
+    val options: List<String>,
   )
 }

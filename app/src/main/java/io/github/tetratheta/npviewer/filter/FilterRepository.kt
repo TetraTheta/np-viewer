@@ -8,14 +8,19 @@ import java.net.URL
 import java.security.MessageDigest
 
 data class FilterUpdateSummary(
-  val updatedCount: Int, val failedCount: Int, val lastError: String? = null
+  val updatedCount: Int,
+  val failedCount: Int,
+  val lastError: String? = null,
 )
 
 data class RuleSetSnapshot(
-  val fingerprint: String, val ruleLines: List<String>
+  val fingerprint: String,
+  val ruleLines: List<String>,
 )
 
-class FilterRepository(private val context: Context) {
+class FilterRepository(
+  private val context: Context,
+) {
   private val prefs = FilterPreferences.prefs(context)
   private val filtersDir = File(context.filesDir, "filters").apply { mkdirs() }
   private var cachedStateKey: String? = null
@@ -45,9 +50,11 @@ class FilterRepository(private val context: Context) {
       }
     }
     ruleLines += getUserRuleLines()
-    val snapshot = RuleSetSnapshot(
-      fingerprint = ruleLines.joinToString(separator = "\u0000") { it }.hashCode().toString(), ruleLines = ruleLines
-    )
+    val snapshot =
+      RuleSetSnapshot(
+        fingerprint = ruleLines.joinToString(separator = "\u0000") { it }.hashCode().toString(),
+        ruleLines = ruleLines,
+      )
     cachedStateKey = stateKey
     cachedSnapshot = snapshot
     return snapshot
@@ -124,12 +131,13 @@ class FilterRepository(private val context: Context) {
   }
 
   private fun download(url: String): String {
-    val connection = (URL(url).openConnection() as HttpURLConnection).apply {
-      connectTimeout = 15_000
-      readTimeout = 30_000
-      requestMethod = "GET"
-      setRequestProperty("User-Agent", "NPViewer Filter Updater")
-    }
+    val connection =
+      (URL(url).openConnection() as HttpURLConnection).apply {
+        connectTimeout = 15_000
+        readTimeout = 30_000
+        requestMethod = "GET"
+        setRequestProperty("User-Agent", "NPViewer Filter Updater")
+      }
     connection.connect()
     if (connection.responseCode !in 200..299) {
       error("HTTP ${connection.responseCode} for $url")

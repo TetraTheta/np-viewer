@@ -6,7 +6,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
 
-class BookmarkRepository(context: Context) {
+class BookmarkRepository(
+  context: Context,
+) {
   private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
   fun getAll(): List<BookmarkItem> {
@@ -34,13 +36,16 @@ class BookmarkRepository(context: Context) {
         JSONObject()
           .put("id", item.id)
           .put("title", item.title)
-          .put("url", item.url)
+          .put("url", item.url),
       )
     }
     prefs.edit { putString(KEY_BOOKMARKS, array.toString()) }
   }
 
-  fun add(title: String, url: String): BookmarkItem? {
+  fun add(
+    title: String,
+    url: String,
+  ): BookmarkItem? {
     val normalizedUrl = normalizeUrl(url) ?: return null
     val items = getAll()
     if (items.any { it.url == normalizedUrl }) return null
@@ -49,18 +54,23 @@ class BookmarkRepository(context: Context) {
     return item
   }
 
-  fun update(id: String, title: String, url: String): BookmarkItem? {
+  fun update(
+    id: String,
+    title: String,
+    url: String,
+  ): BookmarkItem? {
     val normalizedUrl = normalizeUrl(url) ?: return null
     val items = getAll()
     if (items.any { it.id != id && it.url == normalizedUrl }) return null
     var updated: BookmarkItem? = null
-    val nextItems = items.map { item ->
-      if (item.id == id) {
-        BookmarkItem(id, title.trim(), normalizedUrl).also { updated = it }
-      } else {
-        item
+    val nextItems =
+      items.map { item ->
+        if (item.id == id) {
+          BookmarkItem(id, title.trim(), normalizedUrl).also { updated = it }
+        } else {
+          item
+        }
       }
-    }
     if (updated == null) return null
     saveAll(nextItems)
     return updated
@@ -70,7 +80,10 @@ class BookmarkRepository(context: Context) {
     saveAll(getAll().filterNot { it.id == id })
   }
 
-  fun containsUrl(url: String, exceptId: String? = null): Boolean {
+  fun containsUrl(
+    url: String,
+    exceptId: String? = null,
+  ): Boolean {
     val normalizedUrl = normalizeUrl(url) ?: return false
     return getAll().any { it.id != exceptId && it.url == normalizedUrl }
   }

@@ -3,7 +3,9 @@ package io.github.tetratheta.npviewer.filter
 import android.util.Log
 
 data class CompiledFilterSet(
-  val fingerprint: String, val networkEngine: NetworkFilterEngine, val cosmeticEngine: CosmeticFilterEngine
+  val fingerprint: String,
+  val networkEngine: NetworkFilterEngine,
+  val cosmeticEngine: CosmeticFilterEngine,
 )
 
 object FilterCompiler {
@@ -29,13 +31,13 @@ object FilterCompiler {
 
     Log.i(
       TAG,
-      "Compiled filters: network=${networkRules.size}, cosmetic=${cosmeticRules.size}, skippedNetwork=$skippedNetwork, skippedCosmetic=$skippedCosmetic"
+      "Compiled filters: network=${networkRules.size}, cosmetic=${cosmeticRules.size}, skippedNetwork=$skippedNetwork, skippedCosmetic=$skippedCosmetic",
     )
 
     return CompiledFilterSet(
       fingerprint = snapshot.fingerprint,
       networkEngine = NetworkFilterEngine.create(networkRules),
-      cosmeticEngine = CosmeticFilterEngine.create(cosmeticRules)
+      cosmeticEngine = CosmeticFilterEngine.create(cosmeticRules),
     )
   }
 }

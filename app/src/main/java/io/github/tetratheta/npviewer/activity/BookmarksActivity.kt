@@ -41,13 +41,15 @@ class BookmarksActivity : AppCompatActivity() {
   private var currentTitle: String = ""
   private var currentUrl: String = ""
 
-  private val exportLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("text/html")) { uri ->
-    if (uri != null) exportBookmarks(uri)
-  }
+  private val exportLauncher =
+    registerForActivityResult(ActivityResultContracts.CreateDocument("text/html")) { uri ->
+      if (uri != null) exportBookmarks(uri)
+    }
 
-  private val importLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-    if (uri != null) importBookmarks(uri)
-  }
+  private val importLauncher =
+    registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+      if (uri != null) importBookmarks(uri)
+    }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -119,33 +121,38 @@ class BookmarksActivity : AppCompatActivity() {
 
   private fun showBookmarkEditor(item: BookmarkItem? = null) {
     val density = resources.displayMetrics.density
-    val container = LinearLayout(this).apply {
-      orientation = LinearLayout.VERTICAL
-      val padding = (24 * density).toInt()
-      setPadding(padding, (12 * density).toInt(), padding, 0)
-    }
-    val titleInput = EditText(this).apply {
-      hint = getString(R.string.bookmark_title_hint)
-      inputType = InputType.TYPE_CLASS_TEXT
-      imeOptions = EditorInfo.IME_ACTION_NEXT
-      setText(item?.title ?: currentTitle)
-      singleLineSet()
-    }
-    val titleError = TextView(this).apply {
-      setTextColor(ContextCompat.getColor(this@BookmarksActivity, android.R.color.holo_red_dark))
-      visibility = View.GONE
-    }
-    val urlInput = EditText(this).apply {
-      hint = getString(R.string.bookmark_url_hint)
-      inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
-      imeOptions = EditorInfo.IME_ACTION_DONE
-      setText(item?.url ?: currentUrl)
-      singleLineSet()
-    }
-    val urlError = TextView(this).apply {
-      setTextColor(ContextCompat.getColor(this@BookmarksActivity, android.R.color.holo_red_dark))
-      visibility = View.GONE
-    }
+    val container =
+      LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        val padding = (24 * density).toInt()
+        setPadding(padding, (12 * density).toInt(), padding, 0)
+      }
+    val titleInput =
+      EditText(this).apply {
+        hint = getString(R.string.bookmark_title_hint)
+        inputType = InputType.TYPE_CLASS_TEXT
+        imeOptions = EditorInfo.IME_ACTION_NEXT
+        setText(item?.title ?: currentTitle)
+        singleLineSet()
+      }
+    val titleError =
+      TextView(this).apply {
+        setTextColor(ContextCompat.getColor(this@BookmarksActivity, android.R.color.holo_red_dark))
+        visibility = View.GONE
+      }
+    val urlInput =
+      EditText(this).apply {
+        hint = getString(R.string.bookmark_url_hint)
+        inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+        imeOptions = EditorInfo.IME_ACTION_DONE
+        setText(item?.url ?: currentUrl)
+        singleLineSet()
+      }
+    val urlError =
+      TextView(this).apply {
+        setTextColor(ContextCompat.getColor(this@BookmarksActivity, android.R.color.holo_red_dark))
+        visibility = View.GONE
+      }
 
     container.addView(titleInput)
     container.addView(titleError)
@@ -153,8 +160,13 @@ class BookmarksActivity : AppCompatActivity() {
     container.addView(urlError)
 
     val dialog =
-      AlertDialog.Builder(this).setTitle(if (item == null) R.string.title_add_bookmark else R.string.title_edit_bookmark).setView(container)
-        .setPositiveButton(android.R.string.ok, null).setNegativeButton(R.string.btn_cancel, null).create()
+      AlertDialog
+        .Builder(this)
+        .setTitle(if (item == null) R.string.title_add_bookmark else R.string.title_edit_bookmark)
+        .setView(container)
+        .setPositiveButton(android.R.string.ok, null)
+        .setNegativeButton(R.string.btn_cancel, null)
+        .create()
 
     dialog.setOnShowListener {
       val saveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
@@ -170,7 +182,7 @@ class BookmarksActivity : AppCompatActivity() {
             normalizedUrl == null -> getString(R.string.error_bookmark_url_invalid)
             duplicate -> getString(R.string.error_bookmark_url_duplicate)
             else -> null
-          }
+          },
         )
         saveButton.isEnabled = title.isNotBlank() && normalizedUrl != null && !duplicate
       }
@@ -195,51 +207,63 @@ class BookmarksActivity : AppCompatActivity() {
 
   private fun showItemMenu(item: BookmarkItem) {
     val options = arrayOf(getString(R.string.menu_edit), getString(R.string.btn_delete))
-    AlertDialog.Builder(this).setItems(options) { _, which ->
-      when (which) {
-        0 -> showBookmarkEditor(item)
-        1 -> confirmDelete(item)
-      }
-    }.show()
+    AlertDialog
+      .Builder(this)
+      .setItems(options) { _, which ->
+        when (which) {
+          0 -> showBookmarkEditor(item)
+          1 -> confirmDelete(item)
+        }
+      }.show()
   }
 
   private fun confirmDelete(item: BookmarkItem) {
-    AlertDialog.Builder(this).setTitle(R.string.title_delete_bookmark).setMessage(item.title).setPositiveButton(R.string.btn_delete) { _, _ ->
-      repository.delete(item.id)
-      refreshList()
-    }.setNegativeButton(R.string.btn_cancel, null).show()
+    AlertDialog
+      .Builder(this)
+      .setTitle(R.string.title_delete_bookmark)
+      .setMessage(item.title)
+      .setPositiveButton(R.string.btn_delete) { _, _ ->
+        repository.delete(item.id)
+        refreshList()
+      }.setNegativeButton(R.string.btn_cancel, null)
+      .show()
   }
 
   private fun showMoreMenu(anchor: View) {
-    val menuItems = listOf(
-      IconMenuItem(R.drawable.ic_format_list_bulleted_24, getString(R.string.menu_edit_order)),
-      IconMenuItem(R.drawable.ic_file_download_24, getString(R.string.menu_export_bookmarks)),
-      IconMenuItem(R.drawable.ic_file_upload_24, getString(R.string.menu_import_bookmarks))
-    )
+    val menuItems =
+      listOf(
+        IconMenuItem(R.drawable.ic_format_list_bulleted_24, getString(R.string.menu_edit_order)),
+        IconMenuItem(R.drawable.ic_file_download_24, getString(R.string.menu_export_bookmarks)),
+        IconMenuItem(R.drawable.ic_file_upload_24, getString(R.string.menu_import_bookmarks)),
+      )
     val horizontalMargin = resources.getDimensionPixelSize(R.dimen.bookmark_popup_menu_horizontal_margin)
     val width =
       resources.getDimensionPixelSize(R.dimen.bookmark_popup_menu_width).coerceAtMost(resources.displayMetrics.widthPixels - horizontalMargin)
     val verticalPadding = resources.getDimensionPixelSize(R.dimen.bookmark_popup_menu_vertical_padding)
-    val container = LinearLayout(this).apply {
-      orientation = LinearLayout.VERTICAL
-      setBackgroundResource(R.drawable.bg_popup_menu)
-      setPadding(0, verticalPadding, 0, verticalPadding)
-    }
-    val popupWindow = PopupWindow(container, width, LinearLayout.LayoutParams.WRAP_CONTENT, true).apply {
-      isOutsideTouchable = true
-      setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
-      elevation = resources.getDimension(R.dimen.bookmark_popup_menu_elevation)
-    }
+    val container =
+      LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setBackgroundResource(R.drawable.bg_popup_menu)
+        setPadding(0, verticalPadding, 0, verticalPadding)
+      }
+    val popupWindow =
+      PopupWindow(container, width, LinearLayout.LayoutParams.WRAP_CONTENT, true).apply {
+        isOutsideTouchable = true
+        setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
+        elevation = resources.getDimension(R.dimen.bookmark_popup_menu_elevation)
+      }
 
     menuItems.forEachIndexed { index, item ->
-      container.addView(createPopupMenuRow(item, container) {
-        popupWindow.dismiss()
-        when (index) {
-          0 -> startActivity(Intent(this, BookmarkOrderActivity::class.java))
-          1 -> exportLauncher.launch("np-viewer-bookmarks.html")
-          2 -> importLauncher.launch(arrayOf("text/html", "text/*", "application/octet-stream"))
-        }
-      })
+      container.addView(
+        createPopupMenuRow(item, container) {
+          popupWindow.dismiss()
+          when (index) {
+            0 -> startActivity(Intent(this, BookmarkOrderActivity::class.java))
+            1 -> exportLauncher.launch("np-viewer-bookmarks.html")
+            2 -> importLauncher.launch(arrayOf("text/html", "text/*", "application/octet-stream"))
+          }
+        },
+      )
     }
 
     if (anchor.isAttachedToWindow) {
@@ -247,20 +271,30 @@ class BookmarksActivity : AppCompatActivity() {
     }
   }
 
-  private fun createPopupMenuRow(item: IconMenuItem, parent: ViewGroup, onClick: () -> Unit): View {
+  private fun createPopupMenuRow(
+    item: IconMenuItem,
+    parent: ViewGroup,
+    onClick: () -> Unit,
+  ): View {
     val view = LayoutInflater.from(this).inflate(R.layout.item_popup_icon_menu, parent, false)
-    view.layoutParams = LinearLayout.LayoutParams(
-      LinearLayout.LayoutParams.MATCH_PARENT,
-      resources.getDimensionPixelSize(R.dimen.bookmark_popup_menu_item_height)
-    )
+    view.layoutParams =
+      LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.MATCH_PARENT,
+        resources.getDimensionPixelSize(R.dimen.bookmark_popup_menu_item_height),
+      )
     (view as TextView).bindIconMenuItem(item.iconRes, item.title)
     view.setOnClickListener { onClick() }
     return view
   }
 
-  private fun TextView.bindIconMenuItem(iconRes: Int, title: String) {
+  private fun TextView.bindIconMenuItem(
+    iconRes: Int,
+    title: String,
+  ) {
     text = title
-    val icon = androidx.appcompat.content.res.AppCompatResources.getDrawable(context, iconRes)
+    val icon =
+      androidx.appcompat.content.res.AppCompatResources
+        .getDrawable(context, iconRes)
     val iconSize = resources.getDimensionPixelSize(R.dimen.icon_menu_icon_size)
     icon?.setBounds(0, 0, iconSize, iconSize)
     setCompoundDrawablesRelative(icon, null, null, null)
@@ -315,10 +349,16 @@ class BookmarksActivity : AppCompatActivity() {
     }
 
     override fun getCount(): Int = items.size
+
     override fun getItem(position: Int): BookmarkItem = items[position]
+
     override fun getItemId(position: Int): Long = position.toLong()
 
-    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+    override fun getView(
+      position: Int,
+      convertView: View?,
+      parent: ViewGroup,
+    ): View {
       val view = convertView ?: LayoutInflater.from(parent.context).inflate(R.layout.item_bookmark, parent, false)
       val item = getItem(position)
       view.findViewById<TextView>(R.id.bookmark_item_title).text = item.title
@@ -327,11 +367,28 @@ class BookmarksActivity : AppCompatActivity() {
     }
   }
 
-  private data class IconMenuItem(val iconRes: Int, val title: String)
+  private data class IconMenuItem(
+    val iconRes: Int,
+    val title: String,
+  )
 
-  private class SimpleTextWatcher(private val afterChanged: () -> Unit) : TextWatcher {
-    override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
-    override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+  private class SimpleTextWatcher(
+    private val afterChanged: () -> Unit,
+  ) : TextWatcher {
+    override fun beforeTextChanged(
+      s: CharSequence?,
+      start: Int,
+      count: Int,
+      after: Int,
+    ) = Unit
+
+    override fun onTextChanged(
+      s: CharSequence?,
+      start: Int,
+      before: Int,
+      count: Int,
+    ) = Unit
+
     override fun afterTextChanged(s: Editable?) = afterChanged()
   }
 

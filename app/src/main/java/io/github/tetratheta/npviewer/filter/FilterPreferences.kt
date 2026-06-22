@@ -40,11 +40,17 @@ object FilterPreferences {
 
   fun getSubscriptionEditorText(context: Context): String = getSubscriptionUrls(context).joinToString("\n")
 
-  fun setSubscriptionEditorText(context: Context, value: String) {
+  fun setSubscriptionEditorText(
+    context: Context,
+    value: String,
+  ) {
     setSubscriptionUrls(context, value.lineSequence().toList())
   }
 
-  fun setSubscriptionUrls(context: Context, urls: List<String>) {
+  fun setSubscriptionUrls(
+    context: Context,
+    urls: List<String>,
+  ) {
     prefs(context).edit {
       putString(KEY_SUBSCRIPTIONS, encodeStringArray(urls))
     }
@@ -70,11 +76,17 @@ object FilterPreferences {
 
   fun getUserRuleEditorText(context: Context): String = getUserRuleLines(context).joinToString("\n")
 
-  fun setUserRulesEditorText(context: Context, value: String) {
+  fun setUserRulesEditorText(
+    context: Context,
+    value: String,
+  ) {
     setUserRuleLines(context, value.lineSequence().toList())
   }
 
-  fun setUserRuleLines(context: Context, rules: List<String>) {
+  fun setUserRuleLines(
+    context: Context,
+    rules: List<String>,
+  ) {
     prefs(context).edit {
       putString(KEY_USER_RULES, encodeStringArray(rules))
     }
@@ -84,7 +96,10 @@ object FilterPreferences {
 
   fun getLastUpdateError(context: Context): String? = prefs(context).getString(KEY_LAST_UPDATE_ERROR, null)
 
-  fun shouldRefresh(context: Context, now: Long = System.currentTimeMillis()): Boolean {
+  fun shouldRefresh(
+    context: Context,
+    now: Long = System.currentTimeMillis(),
+  ): Boolean {
     if (!isEnabled(context) || !isAutoUpdateEnabled(context)) return false
     return now - getLastUpdatedAt(context) >= UPDATE_INTERVAL_MS
   }
@@ -92,33 +107,35 @@ object FilterPreferences {
   private fun parseSubscriptions(rawValue: String?): List<String> {
     if (rawValue == null) return DEFAULT_SUBSCRIPTIONS
     if (rawValue.isBlank()) return emptyList()
-    val parsed = runCatching {
-      val array = JSONArray(rawValue)
-      buildList {
-        for (index in 0 until array.length()) {
-          add(array.getString(index))
+    val parsed =
+      runCatching {
+        val array = JSONArray(rawValue)
+        buildList {
+          for (index in 0 until array.length()) {
+            add(array.getString(index))
+          }
         }
+      }.getOrElse {
+        // JSON 배열로 파싱되지 않으면 이전 버전의 줄바꿈 구분 문자열로 간주한다.
+        rawValue.lineSequence().toList()
       }
-    }.getOrElse {
-      // JSON 배열로 파싱되지 않으면 이전 버전의 줄바꿈 구분 문자열로 간주한다.
-      rawValue.lineSequence().toList()
-    }
     return normalizeStringArray(parsed)
   }
 
   private fun parseUserRules(rawValue: String?): List<String> {
     if (rawValue.isNullOrBlank()) return emptyList()
-    val parsed = runCatching {
-      val array = JSONArray(rawValue)
-      buildList {
-        for (index in 0 until array.length()) {
-          add(array.getString(index))
+    val parsed =
+      runCatching {
+        val array = JSONArray(rawValue)
+        buildList {
+          for (index in 0 until array.length()) {
+            add(array.getString(index))
+          }
         }
+      }.getOrElse {
+        // JSON 배열로 파싱되지 않으면 이전 버전의 줄바꿈 구분 문자열로 간주한다.
+        rawValue.lineSequence().toList()
       }
-    }.getOrElse {
-      // JSON 배열로 파싱되지 않으면 이전 버전의 줄바꿈 구분 문자열로 간주한다.
-      rawValue.lineSequence().toList()
-    }
     return normalizeStringArray(parsed)
   }
 
@@ -128,6 +145,5 @@ object FilterPreferences {
     return array.toString()
   }
 
-  private fun normalizeStringArray(values: Iterable<String>): List<String> =
-    values.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+  private fun normalizeStringArray(values: Iterable<String>): List<String> = values.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
 }

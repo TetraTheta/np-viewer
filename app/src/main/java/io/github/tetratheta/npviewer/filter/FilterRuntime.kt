@@ -8,14 +8,17 @@ import androidx.core.net.toUri
 import java.io.ByteArrayInputStream
 import java.util.concurrent.ConcurrentHashMap
 
-class FilterRuntime private constructor(private val app: Application) {
+class FilterRuntime private constructor(
+  private val app: Application,
+) {
   companion object {
     @Volatile
     private var instance: FilterRuntime? = null
 
-    fun getInstance(context: Context): FilterRuntime = instance ?: synchronized(this) {
-      instance ?: FilterRuntime(context.applicationContext as Application).also { instance = it }
-    }
+    fun getInstance(context: Context): FilterRuntime =
+      instance ?: synchronized(this) {
+        instance ?: FilterRuntime(context.applicationContext as Application).also { instance = it }
+      }
   }
 
   private val repository = FilterRepository(app)
@@ -26,9 +29,12 @@ class FilterRuntime private constructor(private val app: Application) {
   private var currentFingerprint = ""
 
   @Volatile
-  private var compiledFilters = CompiledFilterSet(
-    fingerprint = "", networkEngine = NetworkFilterEngine.empty(), cosmeticEngine = CosmeticFilterEngine.empty()
-  )
+  private var compiledFilters =
+    CompiledFilterSet(
+      fingerprint = "",
+      networkEngine = NetworkFilterEngine.empty(),
+      cosmeticEngine = CosmeticFilterEngine.empty(),
+    )
 
   private val imageExtRegex = Regex(".*\\.(png|jpe?g|gif|webp|svg)(\\?.*)?$", RegexOption.IGNORE_CASE)
   private val fontExtRegex = Regex(".*\\.(woff2?|ttf|otf)(\\?.*)?$", RegexOption.IGNORE_CASE)
@@ -41,9 +47,12 @@ class FilterRuntime private constructor(private val app: Application) {
     synchronized(compileLock) {
       if (!FilterPreferences.isEnabled(app)) {
         currentFingerprint = ""
-        compiledFilters = CompiledFilterSet(
-          fingerprint = "", networkEngine = NetworkFilterEngine.empty(), cosmeticEngine = CosmeticFilterEngine.empty()
-        )
+        compiledFilters =
+          CompiledFilterSet(
+            fingerprint = "",
+            networkEngine = NetworkFilterEngine.empty(),
+            cosmeticEngine = CosmeticFilterEngine.empty(),
+          )
         cosmeticCache.clear()
         repository.invalidateRuleCache()
         return
@@ -76,13 +85,14 @@ class FilterRuntime private constructor(private val app: Application) {
     if (!FilterPreferences.isEnabled(app) || !repository.hasAnyActiveSource()) return null
 
     ensureEngine()
-    val filterRequest = FilterRequest(
-      url = request.url.toString(),
-      sourceUrl = request.requestHeaders["Referer"],
-      requestType = resolveRequestType(request),
-      host = extractHost(request.url.toString()),
-      sourceHost = extractHost(request.requestHeaders["Referer"])
-    )
+    val filterRequest =
+      FilterRequest(
+        url = request.url.toString(),
+        sourceUrl = request.requestHeaders["Referer"],
+        requestType = resolveRequestType(request),
+        host = extractHost(request.url.toString()),
+        sourceHost = extractHost(request.requestHeaders["Referer"]),
+      )
 
     return if (compiledFilters.networkEngine.shouldBlock(filterRequest)) emptyResponse() else null
   }
@@ -112,11 +122,23 @@ class FilterRuntime private constructor(private val app: Application) {
     }
   }
 
-  private fun emptyResponse(): WebResourceResponse = WebResourceResponse(
-    "text/plain", "utf-8", 204, "No Content", emptyMap(), ByteArrayInputStream(ByteArray(0))
-  )
+  private fun emptyResponse(): WebResourceResponse =
+    WebResourceResponse(
+      "text/plain",
+      "utf-8",
+      204,
+      "No Content",
+      emptyMap(),
+      ByteArrayInputStream(ByteArray(0)),
+    )
 
-  private fun normalizeUrl(url: String): String = runCatching {
-    url.toUri().buildUpon().fragment(null).build().toString()
-  }.getOrDefault(url)
+  private fun normalizeUrl(url: String): String =
+    runCatching {
+      url
+        .toUri()
+        .buildUpon()
+        .fragment(null)
+        .build()
+        .toString()
+    }.getOrDefault(url)
 }

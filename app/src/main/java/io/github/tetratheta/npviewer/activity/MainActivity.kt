@@ -44,11 +44,12 @@ class MainActivity : AppCompatActivity() {
   private lateinit var webView: WebView
   private lateinit var filterRuntime: FilterRuntime
   private val documentStartScripts by lazy { loadAssetTexts("ad-filter.js", "scroll-restore.js") }
-  private val bookmarkLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-    val url = result.data?.getStringExtra(BookmarksActivity.EXTRA_SELECTED_URL) ?: return@registerForActivityResult
-    saveScrollPosition()
-    webView.loadUrl(url)
-  }
+  private val bookmarkLauncher =
+    registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+      val url = result.data?.getStringExtra(BookmarksActivity.EXTRA_SELECTED_URL) ?: return@registerForActivityResult
+      saveScrollPosition()
+      webView.loadUrl(url)
+    }
 
   /** 페이지별 스크롤 위치 캐시 (Least Recently Used 방식) */
   private val scrollPositions = LinkedHashMap<String, Int>(16, 0.75f, true)
@@ -82,7 +83,11 @@ class MainActivity : AppCompatActivity() {
     @JavascriptInterface
     fun getCosmetic(url: String): String {
       val cosmetic = filterRuntime.getCosmeticForUrl(url)
-      return org.json.JSONObject().put("css", cosmetic.css).put("selectors", org.json.JSONArray(cosmetic.selectors)).toString()
+      return org.json
+        .JSONObject()
+        .put("css", cosmetic.css)
+        .put("selectors", org.json.JSONArray(cosmetic.selectors))
+        .toString()
     }
   }
 
@@ -142,50 +147,64 @@ class MainActivity : AppCompatActivity() {
       }
     }
 
-    webView.webChromeClient = object : WebChromeClient() {
-      override fun onProgressChanged(view: WebView, newProgress: Int) {
-        progressBar.visibility = if (newProgress < 100) View.VISIBLE else View.GONE
-        progressBar.progress = newProgress
-      }
-    }
-
-    webView.webViewClient = object : WebViewClient() {
-      override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
-        if (request.isForMainFrame) {
-          filterRuntime.preparePage(request.url.toString())
+    webView.webChromeClient =
+      object : WebChromeClient() {
+        override fun onProgressChanged(
+          view: WebView,
+          newProgress: Int,
+        ) {
+          progressBar.visibility = if (newProgress < 100) View.VISIBLE else View.GONE
+          progressBar.progress = newProgress
         }
-        return filterRuntime.maybeBlock(request)
       }
 
-      override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-        val host = request.url.host ?: return false
-        if (host.endsWith("novelpia.com")) {
-          saveScrollPosition()
-          return false
-        } // 외부 링크는 기본 브라우저로
-        startActivity(Intent(Intent.ACTION_VIEW, request.url))
-        return true
-      }
+    webView.webViewClient =
+      object : WebViewClient() {
+        override fun shouldInterceptRequest(
+          view: WebView,
+          request: WebResourceRequest,
+        ): WebResourceResponse? {
+          if (request.isForMainFrame) {
+            filterRuntime.preparePage(request.url.toString())
+          }
+          return filterRuntime.maybeBlock(request)
+        }
 
-      override fun onPageFinished(view: WebView, url: String?) {
-        swipeRefresh.isRefreshing = false
+        override fun shouldOverrideUrlLoading(
+          view: WebView,
+          request: WebResourceRequest,
+        ): Boolean {
+          val host = request.url.host ?: return false
+          if (host.endsWith("novelpia.com")) {
+            saveScrollPosition()
+            return false
+          } // 외부 링크는 기본 브라우저로
+          startActivity(Intent(Intent.ACTION_VIEW, request.url))
+          return true
+        }
 
-        if (url != null) {
-          lifecycleScope.launch {
-            withContext(Dispatchers.IO) {
-              filterRuntime.preparePage(url)
-            }
-            if (view.url == url) {
-              if (supportsDocumentStartScript) {
-                refreshCosmeticFilters(view)
-              } else { // 미지원 환경은 페이지 완료 후 정적 자산 스크립트를 순서대로 주입한다.
-                injectWebViewScript(view)
+        override fun onPageFinished(
+          view: WebView,
+          url: String?,
+        ) {
+          swipeRefresh.isRefreshing = false
+
+          if (url != null) {
+            lifecycleScope.launch {
+              withContext(Dispatchers.IO) {
+                filterRuntime.preparePage(url)
+              }
+              if (view.url == url) {
+                if (supportsDocumentStartScript) {
+                  refreshCosmeticFilters(view)
+                } else { // 미지원 환경은 페이지 완료 후 정적 자산 스크립트를 순서대로 주입한다.
+                  injectWebViewScript(view)
+                }
               }
             }
           }
         }
       }
-    }
   }
 
   private fun setupListeners() {
@@ -198,38 +217,50 @@ class MainActivity : AppCompatActivity() {
   }
 
   private fun showMainMenu() {
-    val menuItems = listOf(
-      MainMenuItem.Action(R.drawable.ic_star_24, getString(R.string.menu_bookmarks)),
-      MainMenuItem.Divider,
-      MainMenuItem.Action(R.drawable.ic_settings_24, getString(R.string.menu_settings))
-    )
-    AlertDialog.Builder(this).setAdapter(MainMenuAdapter(menuItems)) { _, which ->
-      when (menuItems[which]) {
-        is MainMenuItem.Action -> {
-          if (which == 0) {
-            bookmarkLauncher.launch(
-              Intent(this, BookmarksActivity::class.java)
-                .putExtra(BookmarksActivity.EXTRA_CURRENT_TITLE, webView.title.orEmpty())
-                .putExtra(BookmarksActivity.EXTRA_CURRENT_URL, webView.url.orEmpty())
-            )
-          } else {
-            startActivity(Intent(this, SettingsActivity::class.java))
+    val menuItems =
+      listOf(
+        MainMenuItem.Action(R.drawable.ic_star_24, getString(R.string.menu_bookmarks)),
+        MainMenuItem.Divider,
+        MainMenuItem.Action(R.drawable.ic_settings_24, getString(R.string.menu_settings)),
+      )
+    AlertDialog
+      .Builder(this)
+      .setAdapter(MainMenuAdapter(menuItems)) { _, which ->
+        when (menuItems[which]) {
+          is MainMenuItem.Action -> {
+            if (which == 0) {
+              bookmarkLauncher.launch(
+                Intent(this, BookmarksActivity::class.java)
+                  .putExtra(BookmarksActivity.EXTRA_CURRENT_TITLE, webView.title.orEmpty())
+                  .putExtra(BookmarksActivity.EXTRA_CURRENT_URL, webView.url.orEmpty()),
+              )
+            } else {
+              startActivity(Intent(this, SettingsActivity::class.java))
+            }
           }
-        }
 
-        MainMenuItem.Divider -> Unit
-      }
-    }.show()
+          MainMenuItem.Divider -> Unit
+        }
+      }.show()
   }
 
-  private inner class MainMenuAdapter(private val items: List<MainMenuItem>) : BaseAdapter() {
+  private inner class MainMenuAdapter(
+    private val items: List<MainMenuItem>,
+  ) : BaseAdapter() {
     override fun getCount(): Int = items.size
+
     override fun getItem(position: Int): MainMenuItem = items[position]
+
     override fun getItemId(position: Int): Long = position.toLong()
+
     override fun isEnabled(position: Int): Boolean = items[position] is MainMenuItem.Action
 
-    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-      return when (val item = getItem(position)) {
+    override fun getView(
+      position: Int,
+      convertView: View?,
+      parent: ViewGroup,
+    ): View =
+      when (val item = getItem(position)) {
         is MainMenuItem.Action -> {
           val view =
             convertView?.takeIf { it.id != View.NO_ID } ?: LayoutInflater.from(parent.context).inflate(R.layout.item_icon_menu, parent, false)
@@ -237,25 +268,38 @@ class MainActivity : AppCompatActivity() {
           view
         }
 
-        MainMenuItem.Divider -> View(parent.context).apply {
-          setBackgroundColor(androidx.core.content.ContextCompat.getColor(parent.context, android.R.color.darker_gray))
-          layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            parent.resources.getDimensionPixelSize(R.dimen.main_long_press_menu_divider_height)
-          )
-        }
+        MainMenuItem.Divider ->
+          View(parent.context).apply {
+            setBackgroundColor(
+              androidx.core.content.ContextCompat
+                .getColor(parent.context, android.R.color.darker_gray),
+            )
+            layoutParams =
+              ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                parent.resources.getDimensionPixelSize(R.dimen.main_long_press_menu_divider_height),
+              )
+          }
       }
-    }
   }
 
   private sealed interface MainMenuItem {
-    data class Action(val iconRes: Int, val title: String) : MainMenuItem
+    data class Action(
+      val iconRes: Int,
+      val title: String,
+    ) : MainMenuItem
+
     data object Divider : MainMenuItem
   }
 
-  private fun TextView.bindIconMenuItem(iconRes: Int, title: String) {
+  private fun TextView.bindIconMenuItem(
+    iconRes: Int,
+    title: String,
+  ) {
     text = title
-    val icon = androidx.appcompat.content.res.AppCompatResources.getDrawable(context, iconRes)
+    val icon =
+      androidx.appcompat.content.res.AppCompatResources
+        .getDrawable(context, iconRes)
     val iconSize = resources.getDimensionPixelSize(R.dimen.icon_menu_icon_size)
     icon?.setBounds(0, 0, iconSize, iconSize)
     setCompoundDrawablesRelative(icon, null, null, null)
@@ -285,40 +329,47 @@ class MainActivity : AppCompatActivity() {
   }
 
   private fun setupBackHandler() {
-    onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-      override fun handleOnBackPressed() {
-        if (webView.canGoBack()) {
-          if (webView.url?.contains(VIEWER_URL_PART) == true) {
-            restoringFromViewer = true
+    onBackPressedDispatcher.addCallback(
+      this,
+      object : OnBackPressedCallback(true) {
+        override fun handleOnBackPressed() {
+          if (webView.canGoBack()) {
+            if (webView.url?.contains(VIEWER_URL_PART) == true) {
+              restoringFromViewer = true
+            }
+            saveScrollPosition()
+            webView.goBack()
+            return
           }
-          saveScrollPosition()
-          webView.goBack()
-          return
+          val now = System.currentTimeMillis()
+          if (now - lastBackPress < 2000) {
+            finish()
+          } else {
+            lastBackPress = now
+            Toast.makeText(this@MainActivity, R.string.press_twice_to_exit, Toast.LENGTH_SHORT).show()
+          }
         }
-        val now = System.currentTimeMillis()
-        if (now - lastBackPress < 2000) {
-          finish()
-        } else {
-          lastBackPress = now
-          Toast.makeText(this@MainActivity, R.string.press_twice_to_exit, Toast.LENGTH_SHORT).show()
-        }
-      }
-    })
+      },
+    )
   }
 
   // endregion
 
-  override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+  override fun onKeyDown(
+    keyCode: Int,
+    event: KeyEvent,
+  ): Boolean {
     val url = webView.url ?: ""
     if (url.contains(VIEWER_URL_PART)) {
       val prefs = PreferenceManager.getDefaultSharedPreferences(this)
       if (prefs.getString("volume_behavior", "move_page") == "move_page") {
         val upPrev = prefs.getString("volume_direction", "up_prev") == "up_prev" // 볼륨 업/다운에 따라 이전/다음 페이지 클릭
-        val selector = when (keyCode) {
-          KeyEvent.KEYCODE_VOLUME_UP -> if (upPrev) "#novel_drawing_left" else "#novel_drawing_right"
-          KeyEvent.KEYCODE_VOLUME_DOWN -> if (upPrev) "#novel_drawing_right" else "#novel_drawing_left"
-          else -> null
-        }
+        val selector =
+          when (keyCode) {
+            KeyEvent.KEYCODE_VOLUME_UP -> if (upPrev) "#novel_drawing_left" else "#novel_drawing_right"
+            KeyEvent.KEYCODE_VOLUME_DOWN -> if (upPrev) "#novel_drawing_right" else "#novel_drawing_left"
+            else -> null
+          }
         if (selector != null) {
           webView.evaluateJavascript("document.querySelector('$selector')?.click()", null)
           return true
@@ -369,9 +420,7 @@ class MainActivity : AppCompatActivity() {
   }
 
   @Suppress("SameParameterValue")
-  private fun loadAssetText(assetName: String): String {
-    return assets.open(assetName).bufferedReader().use { it.readText() }
-  }
+  private fun loadAssetText(assetName: String): String = assets.open(assetName).bufferedReader().use { it.readText() }
 
   @Suppress("SameParameterValue")
   private fun loadAssetTexts(vararg assetNames: String): List<String> = assetNames.map(::loadAssetText)

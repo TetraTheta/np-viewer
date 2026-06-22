@@ -1,5 +1,6 @@
 plugins {
   alias(libs.plugins.android.application)
+  alias(libs.plugins.ktlint)
 }
 
 android {
@@ -23,9 +24,7 @@ android {
     release {
       isMinifyEnabled = true
       isShrinkResources = true
-      proguardFiles(
-        getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
-      )
+      proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
     }
     create("prerelease") {
       initWith(getByName("release"))
@@ -43,6 +42,10 @@ android {
 
 kotlin {
   jvmToolchain(17)
+}
+
+ktlint {
+  additionalEditorconfig.set(mapOf("max_line_length" to "150"))
 }
 
 dependencies {
