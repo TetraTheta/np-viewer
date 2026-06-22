@@ -7,13 +7,10 @@ import android.view.KeyEvent
 import android.view.View
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
-import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.Button
-import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
@@ -37,9 +34,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
-  private lateinit var errorView: LinearLayout
   private lateinit var progressBar: LinearProgressIndicator
-  private lateinit var retryButton: Button
   private lateinit var swipeRefresh: TopSwipeRefreshLayout
   private lateinit var webView: WebView
   private lateinit var filterRuntime: FilterRuntime
@@ -107,9 +102,7 @@ class MainActivity : AppCompatActivity() {
   // region 설정
 
   private fun bindViews() {
-    errorView = findViewById(R.id.error_view)
     progressBar = findViewById(R.id.progress_bar)
-    retryButton = findViewById(R.id.retry_button)
     swipeRefresh = findViewById(R.id.swipe_refresh)
     webView = findViewById(R.id.webview)
   }
@@ -166,8 +159,6 @@ class MainActivity : AppCompatActivity() {
 
       override fun onPageFinished(view: WebView, url: String?) {
         swipeRefresh.isRefreshing = false
-        errorView.visibility = View.GONE
-        swipeRefresh.visibility = View.VISIBLE
 
         if (url != null) {
           lifecycleScope.launch {
@@ -184,23 +175,10 @@ class MainActivity : AppCompatActivity() {
           }
         }
       }
-
-      override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-        if (!request.isForMainFrame) return
-        swipeRefresh.isRefreshing = false
-        swipeRefresh.visibility = View.GONE
-        errorView.visibility = View.VISIBLE
-      }
     }
   }
 
   private fun setupListeners() {
-    retryButton.setOnClickListener {
-      errorView.visibility = View.GONE
-      swipeRefresh.visibility = View.VISIBLE
-      webView.reload()
-    }
-
     swipeRefresh.setOnRefreshListener { webView.reload() }
 
     webView.setOnLongClickListener {

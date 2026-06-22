@@ -25,28 +25,4 @@
       android:layout_height="wrap_content"
       android:layout_gravity="top"
       app:trackCornerRadius="0dp" />
-
-  <LinearLayout
-      android:id="@+id/error_view"
-      android:layout_width="match_parent"
-      android:layout_height="match_parent"
-      android:gravity="center"
-      android:orientation="vertical"
-      android:padding="32dp"
-      android:visibility="gone">
-
-    <TextView
-        android:id="@+id/error_message"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:text="@string/msg_page_load_error"
-        android:textSize="18sp" />
-
-    <Button
-        android:id="@+id/retry_button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/retry_button_text" />
-  </LinearLayout>
 </FrameLayout>

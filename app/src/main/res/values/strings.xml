@@ -18,7 +18,6 @@
   <string name="msg_filters_update_failed">Failed to update filters</string>
   <string name="msg_filters_updated">Filters updated</string>
   <string name="msg_notification_permission_denied">Notification permission declined. Use \"Install Update\" to install updates manually.</string>
-  <string name="msg_page_load_error">Could not load page.</string>
   <string name="noti_action_download">Download</string>
   <string name="noti_action_retry">Retry</string>
   <string name="noti_channel_update">Update</string>
@@ -75,7 +74,6 @@
   <string name="pref_key_volume_behavior">Volume Key Behavior</string>
   <string name="pref_key_volume_direction">Volume Key Direction</string>
   <string name="press_twice_to_exit">Press Back again to exit</string>
-  <string name="retry_button_text">Retry</string>
   <string name="start_page_home_title">Home</string>
   <string name="start_page_home_url">https://novelpia.com</string>
   <string name="start_page_last_view_title">Recently Viewed</string>
