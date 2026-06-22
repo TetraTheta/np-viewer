@@ -255,35 +255,15 @@ class SettingsActivity : AppCompatActivity() {
       }
 
       findPreference<Preference>(FilterPreferences.KEY_SUBSCRIPTIONS)?.setOnPreferenceClickListener {
-        showMultilineEditor(
-          title = getString(R.string.title_filters_subscriptions),
-          initialValue = FilterPreferences.prefs(requireContext())
-            .getString(FilterPreferences.KEY_SUBSCRIPTIONS, FilterPreferences.DEFAULT_SUBSCRIPTIONS).orEmpty()
-        ) { value ->
-          FilterPreferences.prefs(requireContext()).edit {
-            putString(FilterPreferences.KEY_SUBSCRIPTIONS, value.trim())
-          }
-          lifecycleScope.launch {
-            runCatching {
-              withContext(Dispatchers.IO) {
-                FilterRuntime.getInstance(requireContext()).updateSubscriptions(force = true)
-                FilterRuntime.getInstance(requireContext()).refreshEngine(force = true)
-              }
-            }
-            refreshFilterPrefs()
-          }
-          Toast.makeText(requireContext(), R.string.msg_filters_saved, Toast.LENGTH_SHORT).show()
-        }
+        showSubscriptionEditor()
         true
       }
 
       findPreference<Preference>(FilterPreferences.KEY_USER_RULES)?.setOnPreferenceClickListener {
         showMultilineEditor(
-          title = getString(R.string.title_filters_user_rules), initialValue = FilterPreferences.getUserRules(requireContext())
+          title = getString(R.string.title_filters_user_rules), initialValue = FilterPreferences.getUserRuleEditorText(requireContext())
         ) { value ->
-          FilterPreferences.prefs(requireContext()).edit {
-            putString(FilterPreferences.KEY_USER_RULES, value.trim())
-          }
+          FilterPreferences.setUserRulesEditorText(requireContext(), value)
           lifecycleScope.launch {
             runCatching {
               withContext(Dispatchers.IO) {
@@ -319,7 +299,7 @@ class SettingsActivity : AppCompatActivity() {
     private fun refreshFilterPrefs() {
       val context = requireContext()
       val urls = FilterPreferences.getSubscriptionUrls(context)
-      val userRules = FilterPreferences.getUserRules(context)
+      val userRules = FilterPreferences.getUserRuleLines(context)
       val lastUpdated = FilterPreferences.getLastUpdatedAt(context)
       val lastError = FilterPreferences.getLastUpdateError(context)
 
@@ -332,7 +312,7 @@ class SettingsActivity : AppCompatActivity() {
       findPreference<Preference>(FilterPreferences.KEY_USER_RULES)?.summary = buildString {
         append(getString(R.string.pref_desc_filters_user_rules))
         append("\n")
-        append(if (userRules.isBlank()) "0 rules" else "${userRules.lineSequence().count { it.isNotBlank() }} rules")
+        append(if (userRules.isEmpty()) "0 rules" else "${userRules.size} rules")
       }
 
       findPreference<Preference>("filters_update_now")?.summary = when {
@@ -345,7 +325,42 @@ class SettingsActivity : AppCompatActivity() {
       }
     }
 
-    private fun showMultilineEditor(title: String, initialValue: String, onSave: (String) -> Unit) {
+    private fun showSubscriptionEditor() {
+      showMultilineEditor(
+        title = getString(R.string.title_filters_subscriptions),
+        initialValue = FilterPreferences.getSubscriptionEditorText(requireContext()),
+        neutralButtonText = getString(R.string.btn_reset),
+        onNeutralClick = { showResetSubscriptionConfirmation() }) { value ->
+        FilterPreferences.setSubscriptionEditorText(requireContext(), value)
+        refreshFiltersAfterSubscriptionChange()
+        Toast.makeText(requireContext(), R.string.msg_filters_saved, Toast.LENGTH_SHORT).show()
+      }
+    }
+
+    private fun showResetSubscriptionConfirmation() {
+      AlertDialog.Builder(requireContext()).setTitle(R.string.title_reset_filter_subscriptions)
+        .setMessage(R.string.msg_reset_filter_subscriptions_warning).setPositiveButton(R.string.btn_reset) { _, _ ->
+          FilterPreferences.resetSubscriptionUrls(requireContext())
+          refreshFiltersAfterSubscriptionChange()
+          Toast.makeText(requireContext(), R.string.msg_filter_subscriptions_reset, Toast.LENGTH_SHORT).show()
+        }.setNegativeButton(R.string.btn_cancel, null).show()
+    }
+
+    private fun refreshFiltersAfterSubscriptionChange() {
+      lifecycleScope.launch {
+        runCatching {
+          withContext(Dispatchers.IO) {
+            FilterRuntime.getInstance(requireContext()).updateSubscriptions(force = true)
+            FilterRuntime.getInstance(requireContext()).refreshEngine(force = true)
+          }
+        }
+        refreshFilterPrefs()
+      }
+    }
+
+    private fun showMultilineEditor(
+      title: String, initialValue: String, neutralButtonText: String? = null, onNeutralClick: (() -> Unit)? = null, onSave: (String) -> Unit
+    ) {
       val editText = EditText(requireContext()).apply {
         setText(initialValue)
         minLines = 8
@@ -362,8 +377,12 @@ class SettingsActivity : AppCompatActivity() {
         )
       }
 
-      AlertDialog.Builder(requireContext()).setTitle(title).setView(container)
-        .setPositiveButton(android.R.string.ok) { _, _ -> onSave(editText.text.toString()) }.setNegativeButton(R.string.btn_cancel, null).show()
+      val builder = AlertDialog.Builder(requireContext()).setTitle(title).setView(container)
+        .setPositiveButton(android.R.string.ok) { _, _ -> onSave(editText.text.toString()) }.setNegativeButton(R.string.btn_cancel, null)
+      if (neutralButtonText != null && onNeutralClick != null) {
+        builder.setNeutralButton(neutralButtonText) { _, _ -> onNeutralClick() }
+      }
+      builder.show()
     }
 
     // endregion

@@ -15,17 +15,15 @@ object FilterCompiler {
     var skippedNetwork = 0
     var skippedCosmetic = 0
 
-    snapshot.rules.forEach { rulesText ->
-      rulesText.lineSequence().forEach { rawLine ->
-        val line = rawLine.trim()
-        if (line.isEmpty() || line.startsWith("!") || line.startsWith("[")) return@forEach
-        if ("##" in line || "#@#" in line) {
-          val rule = CosmeticRuleParser.parse(line)
-          if (rule == null) skippedCosmetic += 1 else cosmeticRules += rule
-        } else {
-          val rule = NetworkRuleParser.parse(line)
-          if (rule == null) skippedNetwork += 1 else networkRules += rule
-        }
+    snapshot.ruleLines.forEach { rawLine ->
+      val line = rawLine.trim()
+      if (line.isEmpty() || line.startsWith("!") || line.startsWith("[")) return@forEach
+      if ("##" in line || "#@#" in line) {
+        val rule = CosmeticRuleParser.parse(line)
+        if (rule == null) skippedCosmetic += 1 else cosmeticRules += rule
+      } else {
+        val rule = NetworkRuleParser.parse(line)
+        if (rule == null) skippedNetwork += 1 else networkRules += rule
       }
     }
 

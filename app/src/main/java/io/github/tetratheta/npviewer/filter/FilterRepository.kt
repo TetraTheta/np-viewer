@@ -12,7 +12,7 @@ data class FilterUpdateSummary(
 )
 
 data class RuleSetSnapshot(
-  val fingerprint: String, val rules: List<String>
+  val fingerprint: String, val ruleLines: List<String>
 )
 
 class FilterRepository(private val context: Context) {
@@ -23,9 +23,9 @@ class FilterRepository(private val context: Context) {
 
   fun getSubscriptionUrls(): List<String> = FilterPreferences.getSubscriptionUrls(context)
 
-  fun getUserRules(): String = FilterPreferences.getUserRules(context)
+  fun getUserRuleLines(): List<String> = FilterPreferences.getUserRuleLines(context)
 
-  fun hasAnyActiveSource(): Boolean = getSubscriptionUrls().isNotEmpty() || getUserRules().isNotBlank()
+  fun hasAnyActiveSource(): Boolean = getSubscriptionUrls().isNotEmpty() || getUserRuleLines().isNotEmpty()
 
   @Synchronized
   fun loadRuleSnapshot(forceReload: Boolean = false): RuleSetSnapshot {
@@ -35,18 +35,18 @@ class FilterRepository(private val context: Context) {
       return cached
     }
 
-    val rules = mutableListOf<String>()
+    val ruleLines = mutableListOf<String>()
     getSubscriptionUrls().forEach { url ->
       val file = fileForUrl(url)
       if (file.exists()) {
-        val text = file.readText()
-        if (text.isNotBlank()) rules += text
+        file.useLines { lines ->
+          ruleLines += lines.toList()
+        }
       }
     }
-    val userRules = getUserRules()
-    if (userRules.isNotBlank()) rules += userRules
+    ruleLines += getUserRuleLines()
     val snapshot = RuleSetSnapshot(
-      fingerprint = rules.joinToString(separator = "\u0000") { it }.hashCode().toString(), rules = rules
+      fingerprint = ruleLines.joinToString(separator = "\u0000") { it }.hashCode().toString(), ruleLines = ruleLines
     )
     cachedStateKey = stateKey
     cachedSnapshot = snapshot
@@ -103,7 +103,7 @@ class FilterRepository(private val context: Context) {
 
   private fun buildStateKey(): String {
     val urls = getSubscriptionUrls()
-    val userRules = getUserRules()
+    val userRules = getUserRuleLines()
     val sb = StringBuilder()
     urls.forEach { url ->
       val file = fileForUrl(url)
