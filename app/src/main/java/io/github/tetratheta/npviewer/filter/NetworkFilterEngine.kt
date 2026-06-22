@@ -1,6 +1,5 @@
 package io.github.tetratheta.npviewer.filter
 
-import java.util.LinkedHashSet
 import java.util.concurrent.ConcurrentHashMap
 
 private const val TYPE_OTHER = 4096
