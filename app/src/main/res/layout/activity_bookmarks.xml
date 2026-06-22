@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/bookmarks_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+  <LinearLayout
+      android:id="@+id/bookmarks_toolbar"
+      android:layout_width="match_parent"
+      android:layout_height="56dp"
+      android:gravity="center_vertical"
+      android:orientation="horizontal"
+      android:paddingHorizontal="4dp">
+
+    <ImageButton
+        android:id="@+id/bookmarks_back"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/tooltip_back"
+        android:padding="12dp"
+        app:srcCompat="@drawable/ic_arrow_back_24" />
+
+    <TextView
+        android:id="@+id/bookmarks_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="@string/title_activity_bookmarks"
+        android:textAppearance="?attr/textAppearanceTitleLarge" />
+
+    <ImageButton
+        android:id="@+id/bookmarks_add"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/tooltip_add_bookmark"
+        android:padding="12dp"
+        app:srcCompat="@drawable/ic_add_24" />
+
+    <ImageButton
+        android:id="@+id/bookmarks_more"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/tooltip_more_bookmark"
+        android:padding="12dp"
+        app:srcCompat="@drawable/ic_more_vert_24" />
+  </LinearLayout>
+
+  <TextView
+      android:id="@+id/bookmarks_empty"
+      android:layout_width="match_parent"
+      android:layout_height="0dp"
+      android:layout_weight="1"
+      android:gravity="center"
+      android:padding="24dp"
+      android:text="@string/msg_bookmarks_empty"
+      android:textAppearance="?attr/textAppearanceBodyLarge"
+      android:visibility="gone" />
+
+  <ListView
+      android:id="@+id/bookmarks_list"
+      android:layout_width="match_parent"
+      android:layout_height="0dp"
+      android:layout_weight="1"
+      android:divider="@android:color/transparent"
+      android:dividerHeight="0dp" />
+</LinearLayout>

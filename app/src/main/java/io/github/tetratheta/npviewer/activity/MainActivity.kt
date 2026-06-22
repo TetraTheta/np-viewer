@@ -4,16 +4,21 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
 import android.view.KeyEvent
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.BaseAdapter
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -39,6 +44,11 @@ class MainActivity : AppCompatActivity() {
   private lateinit var webView: WebView
   private lateinit var filterRuntime: FilterRuntime
   private val documentStartScripts by lazy { loadAssetTexts("ad-filter.js", "scroll-restore.js") }
+  private val bookmarkLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+    val url = result.data?.getStringExtra(BookmarksActivity.EXTRA_SELECTED_URL) ?: return@registerForActivityResult
+    saveScrollPosition()
+    webView.loadUrl(url)
+  }
 
   /** 페이지별 스크롤 위치 캐시 (Least Recently Used 방식) */
   private val scrollPositions = LinkedHashMap<String, Int>(16, 0.75f, true)
@@ -182,11 +192,73 @@ class MainActivity : AppCompatActivity() {
     swipeRefresh.setOnRefreshListener { webView.reload() }
 
     webView.setOnLongClickListener {
-      AlertDialog.Builder(this).setItems(arrayOf(getString(R.string.menu_settings))) { _, which ->
-        if (which == 0) startActivity(Intent(this, SettingsActivity::class.java))
-      }.show()
+      showMainMenu()
       true
     }
+  }
+
+  private fun showMainMenu() {
+    val menuItems = listOf(
+      MainMenuItem.Action(R.drawable.ic_star_24, getString(R.string.menu_bookmarks)),
+      MainMenuItem.Divider,
+      MainMenuItem.Action(R.drawable.ic_settings_24, getString(R.string.menu_settings))
+    )
+    AlertDialog.Builder(this).setAdapter(MainMenuAdapter(menuItems)) { _, which ->
+      when (menuItems[which]) {
+        is MainMenuItem.Action -> {
+          if (which == 0) {
+            bookmarkLauncher.launch(
+              Intent(this, BookmarksActivity::class.java)
+                .putExtra(BookmarksActivity.EXTRA_CURRENT_TITLE, webView.title.orEmpty())
+                .putExtra(BookmarksActivity.EXTRA_CURRENT_URL, webView.url.orEmpty())
+            )
+          } else {
+            startActivity(Intent(this, SettingsActivity::class.java))
+          }
+        }
+
+        MainMenuItem.Divider -> Unit
+      }
+    }.show()
+  }
+
+  private inner class MainMenuAdapter(private val items: List<MainMenuItem>) : BaseAdapter() {
+    override fun getCount(): Int = items.size
+    override fun getItem(position: Int): MainMenuItem = items[position]
+    override fun getItemId(position: Int): Long = position.toLong()
+    override fun isEnabled(position: Int): Boolean = items[position] is MainMenuItem.Action
+
+    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+      return when (val item = getItem(position)) {
+        is MainMenuItem.Action -> {
+          val view =
+            convertView?.takeIf { it.id != View.NO_ID } ?: LayoutInflater.from(parent.context).inflate(R.layout.item_icon_menu, parent, false)
+          (view as TextView).bindIconMenuItem(item.iconRes, item.title)
+          view
+        }
+
+        MainMenuItem.Divider -> View(parent.context).apply {
+          setBackgroundColor(androidx.core.content.ContextCompat.getColor(parent.context, android.R.color.darker_gray))
+          layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            parent.resources.getDimensionPixelSize(R.dimen.main_long_press_menu_divider_height)
+          )
+        }
+      }
+    }
+  }
+
+  private sealed interface MainMenuItem {
+    data class Action(val iconRes: Int, val title: String) : MainMenuItem
+    data object Divider : MainMenuItem
+  }
+
+  private fun TextView.bindIconMenuItem(iconRes: Int, title: String) {
+    text = title
+    val icon = androidx.appcompat.content.res.AppCompatResources.getDrawable(context, iconRes)
+    val iconSize = resources.getDimensionPixelSize(R.dimen.icon_menu_icon_size)
+    icon?.setBounds(0, 0, iconSize, iconSize)
+    setCompoundDrawablesRelative(icon, null, null, null)
   }
 
   private fun setupUpdate() {

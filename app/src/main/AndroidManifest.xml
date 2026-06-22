@@ -12,7 +12,7 @@
   <application
       android:icon="@mipmap/ic_launcher"
       android:label="@string/app_name"
-      android:roundIcon="@mipmap/ic_launcher"
+      android:roundIcon="@mipmap/ic_launcher_round"
       android:supportsRtl="true"
       android:theme="@style/Theme.NPViewer">
     <receiver
@@ -40,6 +40,16 @@
         android:exported="false"
         android:label="@string/title_activity_settings"
         android:parentActivityName=".activity.MainActivity" />
+    <activity
+        android:name=".activity.BookmarksActivity"
+        android:exported="false"
+        android:label="@string/title_activity_bookmarks"
+        android:parentActivityName=".activity.MainActivity" />
+    <activity
+        android:name=".activity.BookmarkOrderActivity"
+        android:exported="false"
+        android:label="@string/title_activity_bookmark_order"
+        android:parentActivityName=".activity.BookmarksActivity" />
     <activity
         android:name=".activity.MainActivity"
         android:exported="true"

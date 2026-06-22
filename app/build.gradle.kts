@@ -51,6 +51,7 @@ dependencies {
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.preference)
   implementation(libs.androidx.preference.ktx)
+  implementation(libs.androidx.recyclerview)
   implementation(libs.androidx.swiperefreshlayout)
   implementation(libs.androidx.webkit)
   implementation(libs.material)

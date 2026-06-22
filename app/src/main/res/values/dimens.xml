@@ -1,0 +1,13 @@
+<resources>
+  <dimen name="icon_menu_icon_size">24dp</dimen>
+  <dimen name="icon_menu_icon_text_gap">20dp</dimen>
+  <dimen name="icon_menu_horizontal_padding">20dp</dimen>
+  <dimen name="icon_menu_item_height">56dp</dimen>
+  <dimen name="main_long_press_menu_divider_height">1dp</dimen>
+  <dimen name="bookmark_popup_menu_width">280dp</dimen>
+  <dimen name="bookmark_popup_menu_horizontal_margin">32dp</dimen>
+  <dimen name="bookmark_popup_menu_vertical_padding">8dp</dimen>
+  <dimen name="bookmark_popup_menu_elevation">8dp</dimen>
+  <dimen name="bookmark_popup_menu_item_height">48dp</dimen>
+  <dimen name="bookmark_popup_menu_item_end_padding">24dp</dimen>
+</resources>

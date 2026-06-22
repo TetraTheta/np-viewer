@@ -1,0 +1,20 @@
+<resources>
+
+  <style name="Widget_NPViewer_IconMenuItem">
+    <item name="android:layout_width">match_parent</item>
+    <item name="android:layout_height">@dimen/icon_menu_item_height</item>
+    <item name="android:background">?attr/selectableItemBackground</item>
+    <item name="android:gravity">center_vertical</item>
+    <item name="android:paddingStart">@dimen/icon_menu_horizontal_padding</item>
+    <item name="android:paddingEnd">@dimen/icon_menu_horizontal_padding</item>
+    <item name="android:drawablePadding">@dimen/icon_menu_icon_text_gap</item>
+    <item name="android:ellipsize">end</item>
+    <item name="android:maxLines">1</item>
+    <item name="android:textAppearance">?attr/textAppearanceBodyLarge</item>
+  </style>
+
+  <style name="Widget_NPViewer_IconMenuItem_Popup" parent="@style/Widget_NPViewer_IconMenuItem">
+    <item name="android:layout_height">@dimen/bookmark_popup_menu_item_height</item>
+    <item name="android:paddingEnd">@dimen/bookmark_popup_menu_item_end_padding</item>
+  </style>
+</resources>
