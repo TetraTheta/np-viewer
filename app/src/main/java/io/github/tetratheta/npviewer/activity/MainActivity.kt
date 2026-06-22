@@ -316,5 +316,6 @@ class MainActivity : AppCompatActivity() {
     return assets.open(assetName).bufferedReader().use { it.readText() }
   }
 
+  @Suppress("SameParameterValue")
   private fun loadAssetTexts(vararg assetNames: String): List<String> = assetNames.map(::loadAssetText)
 }
