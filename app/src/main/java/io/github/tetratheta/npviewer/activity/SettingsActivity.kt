@@ -587,12 +587,14 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun refreshImportedSettingsUi() {
-      findPreference<ListPreference>("volume_behavior")?.value =
-        PreferenceManager.getDefaultSharedPreferences(requireContext()).getString("volume_behavior", "move_page")
-      findPreference<ListPreference>("volume_direction")?.value =
-        PreferenceManager.getDefaultSharedPreferences(requireContext()).getString("volume_direction", "up_prev")
-      findPreference<ListPreference>("swipe_fraction")?.value =
-        PreferenceManager.getDefaultSharedPreferences(requireContext()).getString("swipe_fraction", "0.15")
+      val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
+      listOf(
+        "volume_behavior" to "move_page",
+        "volume_direction" to "up_prev",
+        "swipe_fraction" to "0.15",
+      ).forEach { (key, defaultValue) ->
+        findPreference<ListPreference>(key)?.value = prefs.getString(key, defaultValue)
+      }
       refreshStartPagePref()
       refreshFilterPrefs()
       refreshUpdatePrefs()

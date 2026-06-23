@@ -27,7 +27,7 @@ object FilterPreferences {
   fun getSubscriptionUrls(context: Context): List<String> {
     val prefs = prefs(context)
     val rawValue = prefs.getString(KEY_SUBSCRIPTIONS, null)
-    val urls = parseSubscriptions(rawValue)
+    val urls = parseStringList(rawValue, DEFAULT_SUBSCRIPTIONS)
     val encoded = encodeStringArray(urls)
     // 이전 버전의 줄바꿈 문자열 저장값을 JSON 배열 문자열로 정규화한다.
     if (rawValue != null && rawValue != encoded) {
@@ -63,7 +63,7 @@ object FilterPreferences {
   fun getUserRuleLines(context: Context): List<String> {
     val prefs = prefs(context)
     val rawValue = prefs.getString(KEY_USER_RULES, null)
-    val rules = parseUserRules(rawValue)
+    val rules = parseStringList(rawValue, emptyList())
     val encoded = encodeStringArray(rules)
     // 이전 버전의 줄바꿈 문자열 저장값을 JSON 배열 문자열로 정규화한다.
     if (rawValue != null && rawValue != encoded) {
@@ -104,26 +104,12 @@ object FilterPreferences {
     return now - getLastUpdatedAt(context) >= UPDATE_INTERVAL_MS
   }
 
-  private fun parseSubscriptions(rawValue: String?): List<String> {
-    if (rawValue == null) return DEFAULT_SUBSCRIPTIONS
+  private fun parseStringList(
+    rawValue: String?,
+    defaultValue: List<String>,
+  ): List<String> {
+    if (rawValue == null) return defaultValue
     if (rawValue.isBlank()) return emptyList()
-    val parsed =
-      runCatching {
-        val array = JSONArray(rawValue)
-        buildList {
-          for (index in 0 until array.length()) {
-            add(array.getString(index))
-          }
-        }
-      }.getOrElse {
-        // JSON 배열로 파싱되지 않으면 이전 버전의 줄바꿈 구분 문자열로 간주한다.
-        rawValue.lineSequence().toList()
-      }
-    return normalizeStringArray(parsed)
-  }
-
-  private fun parseUserRules(rawValue: String?): List<String> {
-    if (rawValue.isNullOrBlank()) return emptyList()
     val parsed =
       runCatching {
         val array = JSONArray(rawValue)

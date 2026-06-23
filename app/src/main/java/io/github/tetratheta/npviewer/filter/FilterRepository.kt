@@ -26,11 +26,9 @@ class FilterRepository(
   private var cachedStateKey: String? = null
   private var cachedSnapshot: RuleSetSnapshot? = null
 
-  fun getSubscriptionUrls(): List<String> = FilterPreferences.getSubscriptionUrls(context)
-
-  fun getUserRuleLines(): List<String> = FilterPreferences.getUserRuleLines(context)
-
-  fun hasAnyActiveSource(): Boolean = getSubscriptionUrls().isNotEmpty() || getUserRuleLines().isNotEmpty()
+  fun hasAnyActiveSource(): Boolean =
+    FilterPreferences.getSubscriptionUrls(context).isNotEmpty() ||
+      FilterPreferences.getUserRuleLines(context).isNotEmpty()
 
   @Synchronized
   fun loadRuleSnapshot(forceReload: Boolean = false): RuleSetSnapshot {
@@ -41,7 +39,7 @@ class FilterRepository(
     }
 
     val ruleLines = mutableListOf<String>()
-    getSubscriptionUrls().forEach { url ->
+    FilterPreferences.getSubscriptionUrls(context).forEach { url ->
       val file = fileForUrl(url)
       if (file.exists()) {
         file.useLines { lines ->
@@ -49,7 +47,7 @@ class FilterRepository(
         }
       }
     }
-    ruleLines += getUserRuleLines()
+    ruleLines += FilterPreferences.getUserRuleLines(context)
     val snapshot =
       RuleSetSnapshot(
         fingerprint = ruleLines.joinToString(separator = "\u0000") { it }.hashCode().toString(),
@@ -64,7 +62,7 @@ class FilterRepository(
     if (!FilterPreferences.isEnabled(context)) {
       return FilterUpdateSummary(updatedCount = 0, failedCount = 0)
     }
-    val urls = getSubscriptionUrls()
+    val urls = FilterPreferences.getSubscriptionUrls(context)
     if (urls.isEmpty()) {
       prefs.edit {
         putLong(FilterPreferences.KEY_LAST_UPDATED_AT, System.currentTimeMillis())
@@ -109,8 +107,8 @@ class FilterRepository(
   }
 
   private fun buildStateKey(): String {
-    val urls = getSubscriptionUrls()
-    val userRules = getUserRuleLines()
+    val urls = FilterPreferences.getSubscriptionUrls(context)
+    val userRules = FilterPreferences.getUserRuleLines(context)
     val sb = StringBuilder()
     urls.forEach { url ->
       val file = fileForUrl(url)
