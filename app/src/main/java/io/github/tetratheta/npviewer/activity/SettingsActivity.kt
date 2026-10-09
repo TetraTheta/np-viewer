@@ -564,6 +564,7 @@ class SettingsActivity : AppCompatActivity() {
     private fun applyBackupSettings(settings: BackupSettings) {
       PreferenceManager.getDefaultSharedPreferences(requireContext()).edit {
         putString(START_PAGE_KEY, SettingBackupCodec.startPageKeyToUrl(settings.startPage))
+        putBoolean("scroll_restore", settings.scrollRestoreEnabled)
         putString("volume_behavior", settings.volumeBehavior)
         putString("volume_direction", settings.volumeDirection)
         putString("swipe_fraction", settings.swipeFraction)

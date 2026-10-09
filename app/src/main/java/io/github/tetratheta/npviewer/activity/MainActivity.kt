@@ -40,6 +40,7 @@ import io.github.tetratheta.npviewer.update.UpdateNotifier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 
 class MainActivity : AppCompatActivity() {
   private lateinit var progressBar: LinearProgressIndicator
@@ -60,13 +61,14 @@ class MainActivity : AppCompatActivity() {
   /** 문서 시작 스크립트 API 지원 여부 */
   private val supportsDocumentStartScript = WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)
   private var lastBackPress = 0L
-  private var restoringFromViewer = false
+  private var restoringScrollPosition = false
 
   companion object {
     private const val DEFAULT_START_PAGE_URL = "https://novelpia.com/mybook"
     private const val MAX_SCROLL_CACHE = 10
+    private const val SCROLL_RESTORE_KEY = "scroll_restore"
     private const val START_PAGE_KEY = "start_page"
-    private const val VIEWER_URL_PART = "novelpia.com/viewer/"
+    private const val VIEWER_URL_PREFIX = "https://novelpia.com/viewer/"
   }
 
   /** 주입 스크립트가 이전 스크롤 위치를 조회할 때 사용하는 브리지 */
@@ -74,8 +76,8 @@ class MainActivity : AppCompatActivity() {
     @Suppress("unused")
     @JavascriptInterface
     fun getScrollY(url: String): Int {
-      if (!restoringFromViewer) return 0
-      restoringFromViewer = false
+      if (!restoringScrollPosition) return 0
+      restoringScrollPosition = false
       return scrollPositions[url] ?: 0
     }
   }
@@ -278,9 +280,8 @@ class MainActivity : AppCompatActivity() {
 
   private fun goBackInWebView() {
     if (!webView.canGoBack()) return
-    if (webView.url?.contains(VIEWER_URL_PART) == true) {
-      restoringFromViewer = true
-    }
+    val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+    restoringScrollPosition = prefs.getBoolean(SCROLL_RESTORE_KEY, true)
     saveScrollPosition()
     webView.goBack()
   }
@@ -464,11 +465,7 @@ class MainActivity : AppCompatActivity() {
       object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
           if (webView.canGoBack()) {
-            if (webView.url?.contains(VIEWER_URL_PART) == true) {
-              restoringFromViewer = true
-            }
-            saveScrollPosition()
-            webView.goBack()
+            goBackInWebView()
             return
           }
           val now = System.currentTimeMillis()
@@ -490,7 +487,7 @@ class MainActivity : AppCompatActivity() {
     event: KeyEvent,
   ): Boolean {
     val url = webView.url ?: ""
-    if (url.contains(VIEWER_URL_PART)) {
+    if (url.startsWith(VIEWER_URL_PREFIX)) {
       val prefs = PreferenceManager.getDefaultSharedPreferences(this)
       if (prefs.getString("volume_behavior", "move_page") == "move_page") {
         val upPrev = prefs.getString("volume_direction", "up_prev") == "up_prev" // 볼륨 업/다운에 따라 이전/다음 페이지 클릭
@@ -525,13 +522,15 @@ class MainActivity : AppCompatActivity() {
     webView.saveState(outState)
   }
 
+  @Suppress("DEPRECATION")
   private fun saveScrollPosition() {
     val url = webView.url ?: return
-    if (url.contains(VIEWER_URL_PART)) return
+    if (url.startsWith(VIEWER_URL_PREFIX)) return
     if (scrollPositions.size >= MAX_SCROLL_CACHE && !scrollPositions.containsKey(url)) {
       scrollPositions.remove(scrollPositions.keys.first())
     }
-    scrollPositions[url] = webView.scrollY
+    // WebView 좌표는 물리 픽셀이지만 JavaScript scrollTo는 CSS 픽셀을 사용한다.
+    scrollPositions[url] = (webView.scrollY / webView.scale).roundToInt()
   }
 
   private fun injectWebViewScript(view: WebView) {

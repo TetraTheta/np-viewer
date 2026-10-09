@@ -88,6 +88,7 @@
   <string name="pref_desc_import_settings">JSON 백업에서 설정을 덮어씁니다</string>
   <string name="pref_desc_open_link_settings_disabled">탭하여 시스템 설정을 열고 \"기본으로 열기\" 항목에서 노벨피아 링크를 이 앱으로 처리하도록 설정하세요</string>
   <string name="pref_desc_open_link_settings_enabled">노벨피아 링크가 이미 이 앱에서 열리도록 설정되어 있습니다</string>
+  <string name="pref_desc_scroll_restore">뒤로 갈 때 이전 스크롤 위치를 복원합니다</string>
   <string name="pref_desc_swipe_fraction">당겨서 새로고침이 동작하는 화면 상단 영역</string>
   <string name="pref_desc_update_downloading">다운로드 중…</string>
   <string name="pref_key_auto_check_update">자동 업데이트 확인</string>
@@ -106,6 +107,7 @@
   <string name="pref_key_import_settings">설정 불러오기</string>
   <string name="pref_key_install_update">업데이트 설치</string>
   <string name="pref_key_open_link_settings">링크 처리 활성화</string>
+  <string name="pref_key_scroll_restore">스크롤 위치 복원</string>
   <string name="pref_key_start_page">시작 페이지</string>
   <string name="pref_key_swipe_fraction">당겨서 새로고침 영역</string>
   <string name="pref_key_volume_behavior">뷰어 볼륨 키 동작</string>

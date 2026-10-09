@@ -82,6 +82,7 @@ object SettingBackupCodec {
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
     return BackupSettings(
       startPage = startPageUrlToKey(prefs.getString("start_page", START_PAGE_MYBOOK_URL) ?: START_PAGE_MYBOOK_URL),
+      scrollRestoreEnabled = prefs.getBoolean("scroll_restore", true),
       volumeBehavior = validOrDefault(prefs.getString("volume_behavior", "move_page"), volumeBehaviors, "move_page"),
       volumeDirection = validOrDefault(prefs.getString("volume_direction", "up_prev"), volumeDirections, "up_prev"),
       swipeFraction = validOrDefault(prefs.getString("swipe_fraction", "0.15"), swipeFractions, "0.15"),
@@ -96,6 +97,7 @@ object SettingBackupCodec {
   private fun parseSettings(json: JSONObject): BackupSettings =
     BackupSettings(
       startPage = json.requireString("startPage", setOf(START_PAGE_HOME, START_PAGE_MYBOOK, START_PAGE_LAST_VIEW)),
+      scrollRestoreEnabled = if (json.has("scrollRestoreEnabled")) json.getBoolean("scrollRestoreEnabled") else true,
       volumeBehavior = json.requireString("volumeBehavior", volumeBehaviors),
       volumeDirection = json.requireString("volumeDirection", volumeDirections),
       swipeFraction = json.requireString("swipeFraction", swipeFractions),
@@ -120,6 +122,7 @@ object SettingBackupCodec {
   private fun BackupSettings.toJson(): JSONObject =
     JSONObject()
       .put("startPage", startPage)
+      .put("scrollRestoreEnabled", scrollRestoreEnabled)
       .put("volumeBehavior", volumeBehavior)
       .put("volumeDirection", volumeDirection)
       .put("swipeFraction", swipeFraction)
@@ -185,6 +188,7 @@ data class SettingBackup(
 
 data class BackupSettings(
   val startPage: String,
+  val scrollRestoreEnabled: Boolean,
   val volumeBehavior: String,
   val volumeDirection: String,
   val swipeFraction: String,

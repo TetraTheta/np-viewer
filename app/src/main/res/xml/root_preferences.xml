@@ -13,6 +13,11 @@
         app:summary="@string/pref_desc_open_link_settings_disabled" />
   </PreferenceCategory>
   <PreferenceCategory app:title="@string/pref_category_viewer">
+    <SwitchPreferenceCompat
+        app:key="scroll_restore"
+        app:title="@string/pref_key_scroll_restore"
+        app:summary="@string/pref_desc_scroll_restore"
+        app:defaultValue="true" />
     <ListPreference
         app:key="volume_behavior"
         app:title="@string/pref_key_volume_behavior"
