@@ -1,5 +1,5 @@
 [versions]
-agp = "9.4.1"
+agp = "9.5.0"
 appcompat = "1.8.0"
 coreKtx = "1.19.1"
 ktlint = "14.2.0"
@@ -8,7 +8,7 @@ material = "1.14.0"
 preference = "1.2.1"
 recyclerview = "1.4.0"
 swiperefreshlayout = "1.2.0"
-webkit = "1.17.1"
+webkit = "1.18.0"
 
 [libraries]
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
