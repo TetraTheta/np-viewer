@@ -119,11 +119,11 @@ data class CompiledNetworkRule(
   val scope: DomainRuleScope,
 ) {
   fun matches(request: FilterRequest): Boolean {
-    if (includedRequestTypes.isNotEmpty() && request.requestType !in includedRequestTypes) return false
-    if (request.requestType in excludedRequestTypes) return false
     val scopeHost = request.sourceHost?.takeIf { it.isNotBlank() } ?: request.host
-    if (!scope.matches(scopeHost)) return false
-    return matcher.containsMatchIn(request.url)
+    return (includedRequestTypes.isEmpty() || request.requestType in includedRequestTypes) &&
+      request.requestType !in excludedRequestTypes &&
+      scope.matches(scopeHost) &&
+      matcher.containsMatchIn(request.url)
   }
 }
 

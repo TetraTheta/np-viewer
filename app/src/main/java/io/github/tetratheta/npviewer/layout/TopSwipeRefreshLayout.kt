@@ -30,10 +30,6 @@ class TopSwipeRefreshLayout
       }
     }
 
-    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
-      if (ev.actionMasked == MotionEvent.ACTION_DOWN && ev.y > height * triggerFraction) {
-        return false
-      }
-      return super.onInterceptTouchEvent(ev)
-    }
+    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean =
+      (ev.actionMasked != MotionEvent.ACTION_DOWN || ev.y <= height * triggerFraction) && super.onInterceptTouchEvent(ev)
   }

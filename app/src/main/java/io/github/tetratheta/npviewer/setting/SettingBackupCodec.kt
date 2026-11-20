@@ -5,6 +5,10 @@ import androidx.preference.PreferenceManager
 import io.github.tetratheta.npviewer.bookmark.BookmarkItem
 import io.github.tetratheta.npviewer.bookmark.BookmarkRepository
 import io.github.tetratheta.npviewer.filter.FilterPreferences
+import io.github.tetratheta.npviewer.userscript.UserScript
+import io.github.tetratheta.npviewer.userscript.UserScriptParser
+import io.github.tetratheta.npviewer.userscript.UserScriptPreferences
+import io.github.tetratheta.npviewer.userscript.UserScriptRepository
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -14,7 +18,7 @@ object SettingBackupCodec {
   const val START_PAGE_MYBOOK = "mybook"
   const val START_PAGE_LAST_VIEW = "last_view"
 
-  private const val SCHEMA_VERSION = 1
+  private const val SCHEMA_VERSION = 2
   private const val START_PAGE_HOME_URL = "https://novelpia.com"
   private const val START_PAGE_LAST_VIEW_URL = "https://novelpia.com/mybook/last_view"
   private const val START_PAGE_MYBOOK_URL = "https://novelpia.com/mybook"
@@ -48,17 +52,24 @@ object SettingBackupCodec {
       .put("appVersion", appVersion)
       .put("settings", settings.toJson())
       .put("bookmarks", bookmarks.toJson())
+      .put("userScripts", UserScriptRepository.toJson(UserScriptRepository(context).getAll()))
       .toString()
   }
 
   fun parse(rawJson: String): SettingBackup {
     val root = JSONObject(rawJson)
-    require(root.getInt("schemaVersion") == SCHEMA_VERSION)
+    val schemaVersion = root.getInt("schemaVersion")
+    require(schemaVersion in 1..SCHEMA_VERSION)
+    val userScripts = if (schemaVersion >= 2) UserScriptRepository.parseArray(root.getJSONArray("userScripts")) else emptyList()
+    userScripts.forEach { script ->
+      require(UserScriptParser.parse(script.source) == script.metadata)
+    }
     return SettingBackup(
       settings = parseSettings(root.getJSONObject("settings")),
       bookmarks = parseBookmarks(root.getJSONArray("bookmarks")),
       exportedAt = root.optionalString("exportedAt"),
       appVersion = root.optionalString("appVersion"),
+      userScripts = userScripts,
     )
   }
 
@@ -90,6 +101,7 @@ object SettingBackupCodec {
       filtersAutoUpdate = prefs.getBoolean(FilterPreferences.KEY_AUTO_UPDATE, true),
       filterSubscriptions = FilterPreferences.getSubscriptionUrls(context),
       filterUserRules = FilterPreferences.getUserRuleLines(context),
+      userScriptsEnabled = UserScriptPreferences.isEnabled(context),
       autoCheckUpdate = prefs.getBoolean("auto_check_update", true),
     )
   }
@@ -97,7 +109,7 @@ object SettingBackupCodec {
   private fun parseSettings(json: JSONObject): BackupSettings =
     BackupSettings(
       startPage = json.requireString("startPage", setOf(START_PAGE_HOME, START_PAGE_MYBOOK, START_PAGE_LAST_VIEW)),
-      scrollRestoreEnabled = if (json.has("scrollRestoreEnabled")) json.getBoolean("scrollRestoreEnabled") else true,
+      scrollRestoreEnabled = json.booleanOrDefault("scrollRestoreEnabled", true),
       volumeBehavior = json.requireString("volumeBehavior", volumeBehaviors),
       volumeDirection = json.requireString("volumeDirection", volumeDirections),
       swipeFraction = json.requireString("swipeFraction", swipeFractions),
@@ -105,6 +117,7 @@ object SettingBackupCodec {
       filtersAutoUpdate = json.getBoolean("filtersAutoUpdate"),
       filterSubscriptions = parseStringArray(json.getJSONArray("filterSubscriptions")),
       filterUserRules = parseStringArray(json.getJSONArray("filterUserRules")),
+      userScriptsEnabled = json.booleanOrDefault("userScriptsEnabled", true),
       autoCheckUpdate = json.getBoolean("autoCheckUpdate"),
     )
 
@@ -130,6 +143,7 @@ object SettingBackupCodec {
       .put("filtersAutoUpdate", filtersAutoUpdate)
       .put("filterSubscriptions", filterSubscriptions.toJsonArray())
       .put("filterUserRules", filterUserRules.toJsonArray())
+      .put("userScriptsEnabled", userScriptsEnabled)
       .put("autoCheckUpdate", autoCheckUpdate)
 
   private fun List<BookmarkItem>.toJson(): JSONArray {
@@ -170,7 +184,12 @@ object SettingBackupCodec {
     return value
   }
 
-  private fun JSONObject.optionalString(key: String): String? = if (has(key) && !isNull(key)) getString(key) else null
+  private fun JSONObject.optionalString(key: String): String? = if (!isNull(key)) getString(key) else null
+
+  private fun JSONObject.booleanOrDefault(
+    key: String,
+    defaultValue: Boolean,
+  ): Boolean = opt(key)?.let { getBoolean(key) } ?: defaultValue
 
   private fun validOrDefault(
     value: String?,
@@ -184,6 +203,7 @@ data class SettingBackup(
   val bookmarks: List<BookmarkItem>,
   val exportedAt: String?,
   val appVersion: String?,
+  val userScripts: List<UserScript>,
 )
 
 data class BackupSettings(
@@ -196,5 +216,6 @@ data class BackupSettings(
   val filtersAutoUpdate: Boolean,
   val filterSubscriptions: List<String>,
   val filterUserRules: List<String>,
+  val userScriptsEnabled: Boolean,
   val autoCheckUpdate: Boolean,
 )

@@ -8,6 +8,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -37,6 +38,10 @@ import io.github.tetratheta.npviewer.filter.FilterRuntime
 import io.github.tetratheta.npviewer.layout.TopSwipeRefreshLayout
 import io.github.tetratheta.npviewer.update.UpdateChecker
 import io.github.tetratheta.npviewer.update.UpdateNotifier
+import io.github.tetratheta.npviewer.userscript.UserScriptPreferences
+import io.github.tetratheta.npviewer.userscript.UserScriptRepository
+import io.github.tetratheta.npviewer.userscript.UserScriptRuntime
+import io.github.tetratheta.npviewer.userscript.UserScriptUpdater
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -47,6 +52,7 @@ class MainActivity : AppCompatActivity() {
   private lateinit var swipeRefresh: TopSwipeRefreshLayout
   private lateinit var webView: WebView
   private lateinit var filterRuntime: FilterRuntime
+  private lateinit var userScriptRuntime: UserScriptRuntime
   private val documentStartScripts by lazy { loadAssetTexts("ad-filter.js", "scroll-restore.js") }
   private val bookmarkLauncher =
     registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -104,11 +110,13 @@ class MainActivity : AppCompatActivity() {
 
     bindViews()
     filterRuntime = FilterRuntime.getInstance(this)
+    userScriptRuntime = UserScriptRuntime(UserScriptRepository(this))
     setupEdgeToEdge()
     setupWebView()
     setupListeners()
     setupUpdate()
     setupFilters()
+    setupUserScripts()
 
     if (savedInstanceState != null) {
       webView.restoreState(savedInstanceState)
@@ -151,6 +159,7 @@ class MainActivity : AppCompatActivity() {
         WebViewCompat.addDocumentStartJavaScript(webView, script, setOf("*"))
       }
     }
+    runCatching { userScriptRuntime.refresh(webView) }.onFailure(userScriptRuntime::logFailure)
 
     webView.webChromeClient =
       object : WebChromeClient() {
@@ -165,6 +174,16 @@ class MainActivity : AppCompatActivity() {
 
     webView.webViewClient =
       object : WebViewClient() {
+        override fun onRenderProcessGone(
+          view: WebView,
+          detail: RenderProcessGoneDetail,
+        ): Boolean {
+          (view.parent as? ViewGroup)?.removeView(view)
+          view.destroy()
+          if (!isFinishing && !isDestroyed) recreate()
+          return true
+        }
+
         override fun shouldInterceptRequest(
           view: WebView,
           request: WebResourceRequest,
@@ -205,6 +224,7 @@ class MainActivity : AppCompatActivity() {
                 } else { // 미지원 환경은 페이지 완료 후 정적 자산 스크립트를 순서대로 주입한다.
                   injectWebViewScript(view)
                 }
+                runCatching { userScriptRuntime.runPageFinished(view, url) }.onFailure(userScriptRuntime::logFailure)
               }
             }
           }
@@ -459,6 +479,15 @@ class MainActivity : AppCompatActivity() {
     }
   }
 
+  private fun setupUserScripts() {
+    if (!UserScriptPreferences.shouldUpdate(applicationContext)) return
+    lifecycleScope.launch {
+      runCatching { withContext(Dispatchers.IO) { UserScriptUpdater(applicationContext).updateAll() } }
+        .onSuccess { runCatching { userScriptRuntime.refresh(webView) }.onFailure(userScriptRuntime::logFailure) }
+        .onFailure(userScriptRuntime::logFailure)
+    }
+  }
+
   private fun setupBackHandler() {
     onBackPressedDispatcher.addCallback(
       this,
@@ -515,6 +544,9 @@ class MainActivity : AppCompatActivity() {
     super.onResume()
     val prefs = PreferenceManager.getDefaultSharedPreferences(this)
     swipeRefresh.triggerFraction = prefs.getString("swipe_fraction", null)?.toFloatOrNull() ?: TopSwipeRefreshLayout.DEFAULT_TRIGGER_FRACTION
+    if (::userScriptRuntime.isInitialized) {
+      runCatching { userScriptRuntime.refresh(webView) }.onFailure(userScriptRuntime::logFailure)
+    }
   }
 
   override fun onSaveInstanceState(outState: Bundle) {

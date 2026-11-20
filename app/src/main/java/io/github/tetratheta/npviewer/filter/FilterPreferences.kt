@@ -99,10 +99,7 @@ object FilterPreferences {
   fun shouldRefresh(
     context: Context,
     now: Long = System.currentTimeMillis(),
-  ): Boolean {
-    if (!isEnabled(context) || !isAutoUpdateEnabled(context)) return false
-    return now - getLastUpdatedAt(context) >= UPDATE_INTERVAL_MS
-  }
+  ): Boolean = isEnabled(context) && isAutoUpdateEnabled(context) && now - getLastUpdatedAt(context) >= UPDATE_INTERVAL_MS
 
   private fun parseStringList(
     rawValue: String?,

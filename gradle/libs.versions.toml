@@ -3,7 +3,8 @@ agp = "9.5.1"
 appcompat = "1.8.0"
 coreKtx = "1.19.1"
 ktlint = "14.2.0"
-lifecycleRuntimeKtx = "2.11.0"
+lifecycleRuntimeKtx = "2.11.1"
+junit = "4.13.2"
 material = "1.14.0"
 preference = "1.2.1"
 recyclerview = "1.4.0"
@@ -19,6 +20,7 @@ androidx-recyclerview = { module = "androidx.recyclerview:recyclerview", version
 androidx-swiperefreshlayout = { module = "androidx.swiperefreshlayout:swiperefreshlayout", version.ref = "swiperefreshlayout" }
 androidx-webkit = { module = "androidx.webkit:webkit", version.ref = "webkit" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

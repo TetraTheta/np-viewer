@@ -38,6 +38,9 @@ import io.github.tetratheta.npviewer.setting.SettingBackupCodec
 import io.github.tetratheta.npviewer.update.UpdateChecker
 import io.github.tetratheta.npviewer.update.UpdateInfo
 import io.github.tetratheta.npviewer.update.UpdateResult
+import io.github.tetratheta.npviewer.userscript.UserScriptPreferences
+import io.github.tetratheta.npviewer.userscript.UserScriptRepository
+import io.github.tetratheta.npviewer.userscript.UserScriptUpdater
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -112,6 +115,7 @@ class SettingsActivity : AppCompatActivity() {
       setupStartPagePref()
       setupLinkSettingsPref()
       setupFilterPrefs()
+      setupUserScriptPrefs()
       setupSettingBackupPrefs()
       setupDataPrefs()
       setupVersionPref()
@@ -124,6 +128,7 @@ class SettingsActivity : AppCompatActivity() {
       refreshLinkSettingsPref()
       lifecycleScope.launch {
         refreshFilterPrefs()
+        refreshUserScriptPrefs()
         refreshStorageSummaries()
         refreshUpdatePrefs()
       }
@@ -466,6 +471,49 @@ class SettingsActivity : AppCompatActivity() {
 
     // endregion
 
+    // region 유저스크립트
+
+    private fun setupUserScriptPrefs() {
+      findPreference<Preference>("userscripts_list")?.setOnPreferenceClickListener {
+        startActivity(Intent(requireContext(), UserScriptsActivity::class.java))
+        true
+      }
+      findPreference<Preference>("userscripts_update_now")?.setOnPreferenceClickListener {
+        lifecycleScope.launch {
+          val summary = runCatching { withContext(Dispatchers.IO) { UserScriptUpdater(requireContext()).updateAll() } }
+          refreshUserScriptPrefs()
+          summary
+            .onSuccess {
+              Toast
+                .makeText(
+                  requireContext(),
+                  getString(R.string.msg_userscripts_update_result, it.updated, it.unchanged, it.skipped, it.failed),
+                  Toast.LENGTH_LONG,
+                ).show()
+            }.onFailure {
+              Toast.makeText(requireContext(), R.string.msg_user_script_error, Toast.LENGTH_LONG).show()
+            }
+        }
+        true
+      }
+    }
+
+    private fun refreshUserScriptPrefs() {
+      val scripts = runCatching { UserScriptRepository(requireContext()).getAll() }.getOrDefault(emptyList())
+      findPreference<Preference>("userscripts_list")?.summary =
+        getString(R.string.pref_desc_userscripts_count, scripts.size, scripts.count { it.enabled })
+      val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
+      val lastUpdated = prefs.getLong(UserScriptPreferences.KEY_LAST_UPDATED_AT, 0L)
+      findPreference<Preference>("userscripts_update_now")?.summary =
+        if (lastUpdated == 0L) {
+          getString(R.string.pref_desc_userscripts_update_now)
+        } else {
+          "${getString(R.string.pref_desc_userscripts_update_now)}\n${java.text.DateFormat.getDateTimeInstance().format(Date(lastUpdated))}"
+        }
+    }
+
+    // endregion
+
     // region 설정 백업
 
     private fun setupSettingBackupPrefs() {
@@ -529,11 +577,27 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun importValidatedSettings(backup: SettingBackup) {
       val context = requireContext()
+      if (UserScriptRepository(context).getAll().isNotEmpty()) {
+        AlertDialog
+          .Builder(context)
+          .setTitle(R.string.title_import_settings_userscripts_overwrite)
+          .setMessage(R.string.msg_import_settings_userscripts_overwrite)
+          .setPositiveButton(R.string.btn_overwrite) { _, _ -> applyValidatedSettings(backup) }
+          .setNegativeButton(R.string.btn_cancel, null)
+          .show()
+        return
+      }
+      applyValidatedSettings(backup)
+    }
+
+    private fun applyValidatedSettings(backup: SettingBackup) {
+      val context = requireContext()
       val repository = BookmarkRepository(context)
       val hasExistingBookmarks = repository.getAll().isNotEmpty()
       val shouldRefreshFilters = shouldRefreshFiltersAfterImport(backup.settings)
 
       applyBackupSettings(backup.settings)
+      UserScriptRepository(context).validateAndRestore(backup.userScripts)
       refreshImportedSettingsUi()
       if (shouldRefreshFilters) refreshFiltersAfterImport()
 
@@ -570,6 +634,7 @@ class SettingsActivity : AppCompatActivity() {
         putString("swipe_fraction", settings.swipeFraction)
         putBoolean(FilterPreferences.KEY_ENABLED, settings.filtersEnabled)
         putBoolean(FilterPreferences.KEY_AUTO_UPDATE, settings.filtersAutoUpdate)
+        putBoolean(UserScriptPreferences.KEY_ENABLED, settings.userScriptsEnabled)
         putBoolean("auto_check_update", settings.autoCheckUpdate)
       }
       FilterPreferences.setSubscriptionUrls(requireContext(), settings.filterSubscriptions)

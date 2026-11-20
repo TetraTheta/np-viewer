@@ -65,6 +65,21 @@
         app:title="@string/pref_key_filters_update_now"
         app:summary="@string/pref_desc_filters_update_now" />
   </PreferenceCategory>
+  <PreferenceCategory app:title="@string/pref_category_userscripts">
+    <SwitchPreferenceCompat
+        app:key="userscripts_enabled"
+        app:title="@string/pref_key_userscripts_enabled"
+        app:summary="@string/pref_desc_userscripts_enabled"
+        app:defaultValue="true" />
+    <Preference
+        app:key="userscripts_list"
+        app:title="@string/pref_key_userscripts_list"
+        app:summary="@string/pref_desc_userscripts_list" />
+    <Preference
+        app:key="userscripts_update_now"
+        app:title="@string/pref_key_userscripts_update_now"
+        app:summary="@string/pref_desc_userscripts_update_now" />
+  </PreferenceCategory>
   <PreferenceCategory app:title="@string/pref_category_setting_backup">
     <Preference
         app:key="export_settings"

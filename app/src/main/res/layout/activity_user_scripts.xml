@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/user_scripts_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+  <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:gravity="center_vertical"
+      android:orientation="horizontal"
+      android:padding="8dp">
+
+    <ImageButton
+        android:id="@+id/user_scripts_back"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/tooltip_back"
+        android:src="@drawable/ic_arrow_back_24" />
+
+    <TextView
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="@string/title_activity_user_scripts"
+        android:textAppearance="?attr/textAppearanceTitleLarge" />
+
+    <ImageButton
+        android:id="@+id/user_scripts_add_url"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/tooltip_add_user_script_url"
+        android:src="@drawable/ic_add_24" />
+
+    <ImageButton
+        android:id="@+id/user_scripts_more"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/tooltip_more_user_script"
+        android:src="@drawable/ic_more_vert_24" />
+  </LinearLayout>
+
+  <TextView
+      android:id="@+id/user_scripts_empty"
+      android:layout_width="match_parent"
+      android:layout_height="0dp"
+      android:layout_weight="1"
+      android:gravity="center"
+      android:text="@string/msg_user_scripts_empty" />
+
+  <androidx.recyclerview.widget.RecyclerView
+      android:id="@+id/user_scripts_list"
+      android:layout_width="match_parent"
+      android:layout_height="0dp"
+      android:layout_weight="1" />
+</LinearLayout>
